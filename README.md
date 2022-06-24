@@ -3,6 +3,11 @@ A fantastic little AI Shell Assistant for my friends, powered by GPT3.
 
 ## Setup
 
+### tl;dr – if you know what you're doing
+Compile `shell_ai.ts` using Deno, set `SHELL_AI_KEY` env var to your user key.
+
+### Detailed Instructions
+
 1. Clone repo.
 ```
 git clone https://github.com/ibigio/shell-ai.git
