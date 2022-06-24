@@ -25,7 +25,7 @@ deno compile --allow-net --allow-env --allow-read shell_ai.ts
 ```
 
 
-4. Save the executable in a bin. If you don't have one, follow steps 4 and 5.
+4. Save the executable in a bin. If you don't have one, follow steps 5 and 6.
 
 5. Create a new bin.
 ```
