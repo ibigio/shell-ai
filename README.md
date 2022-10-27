@@ -1,5 +1,5 @@
 # ShellAI
-A fantastic little AI Shell Assistant for my friends, powered by GPT3. *(My friends aka pre-alpha testers.)*
+A fantastic little AI Shell Assistant powered by GPT3.
 
 ## Setup
 
