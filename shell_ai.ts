@@ -31,13 +31,13 @@ if (user_key == null) {
 }
 
 if (Deno.args.length == 0) {
-  console.log("usage: g desired command text");
+  console.log("usage: q desired command text");
   Deno.exit(1);
 }
 
 async function run_client() {
   const phrase = Deno.args.join(" ");
-  const response = await fetch("https://sweet-spider-89.deno.dev", {
+  const response = await fetch("https://shell-ai.deno.dev", {
     method: "POST",
     body: JSON.stringify({
       userID: user_key,
