@@ -1,6 +1,8 @@
 # ShellAI
 A fantastic little AI Shell Assistant powered by GPT3.
 
+_Turn natural language into shell commands!_
+
 ## Setup
 
 1. Install Deno. (https://deno.land/manual/getting_started/installation)
