@@ -1,5 +1,5 @@
 # ShellAI
-A fantastic little AI Shell Assistant powered by GPT3.
+A fantastic little AI Shell Assistant powered by GPT4.
 
 _Turn natural language into shell commands!_
 
