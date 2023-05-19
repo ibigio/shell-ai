@@ -15,7 +15,7 @@ brew install deno
 deno install --allow-read --allow-env --allow-net --name q https://raw.githubusercontent.com/ibigio/shell-ai/main/shell_ai.ts
 ```
 
-3. Set the `SHELL_AI_KEY` environment variable to your user key. (Add this line to your `.zashrc` or `.bashrc` as well!)
+3. Set the `SHELL_AI_KEY` environment variable to your user key. (Add this line to your `.zshrc` or `.bashrc` as well!)
 ```
 export SHELL_AI_KEY="[insert key here]"
 ```
