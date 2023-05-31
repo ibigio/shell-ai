@@ -23,6 +23,7 @@ type Message struct {
 }
 
 func QueryOpenAIAssistant(apiKey string, messages []Message) (string, error) {
+	// fmt.Println("QueryOpenAIAssistant")
 	url := "https://api.openai.com/v1/chat/completions"
 
 	payload := Payload{

@@ -32,11 +32,14 @@ type model struct {
 	textInput textinput.Model
 	spinner   spinner.Model
 
-	queries []queryModel
+	queries      []queryModel
+	cachedOutput string
 
 	isLoading        bool
 	isReceivingInput bool
 	isCopying        bool
+
+	drawBuffer string
 
 	runWithArgs bool
 	err         error
@@ -44,6 +47,12 @@ type model struct {
 
 type loadMsg struct{}
 type responseMsg struct{ response string }
+type drawOutputMsg struct{}
+
+func drawOutputCommand() tea.Msg {
+	time.Sleep(50 * time.Millisecond)
+	return drawOutputMsg{}
+}
 
 func callAPI() tea.Msg {
 	time.Sleep(1 * time.Second)
@@ -140,7 +149,8 @@ func initialModel(prompt string, apiKey string) model {
 		textInput: ti,
 		spinner:   s,
 
-		queries: []queryModel{},
+		queries:      []queryModel{},
+		cachedOutput: "",
 
 		isLoading:        false,
 		isReceivingInput: true,
@@ -159,17 +169,39 @@ func initialModel(prompt string, apiKey string) model {
 	return model
 }
 
+func (m model) updateCacheOutput() tea.Model {
+	var s string
+	for i, q := range m.queries {
+		if q.prompt != "" && !(m.runWithArgs && i == 0) {
+			s += fmt.Sprintf("> %s\n", q.prompt)
+		}
+		if q.formattedResponse != "" {
+			s += q.formattedResponse
+		}
+	}
+	m.cachedOutput = s
+	fmt.Printf(s)
+	return m
+}
+
 func (m model) Init() tea.Cmd {
 	if m.runWithArgs {
 		return tea.Batch(m.spinner.Tick, callMakeQuery(m.apiKey, m.queries))
 	}
-	return nil
+	return textinput.Blink
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+
+	case drawOutputMsg:
+		if m.drawBuffer != "" {
+			fmt.Printf("%s", m.drawBuffer)
+		}
+		m.drawBuffer = ""
+		return m, nil
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -191,13 +223,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isCopying = true
 				m.isLoading = false
 				m.isReceivingInput = false
-				return m, tea.Quit
+				placeholderStyle := lipgloss.NewStyle().Faint(true)
+				m.drawBuffer = placeholderStyle.Render("Copied to clipboard.\n")
+				return m, tea.Batch(drawOutputCommand, tea.Quit)
 			}
 			m.queries = append(m.queries, queryModel{prompt: v})
 			m.textInput.SetValue("")
 			m.isLoading = true
 			m.isReceivingInput = false
-			return m, tea.Batch(m.spinner.Tick, callMakeQuery(m.apiKey, m.queries))
+			m.drawBuffer = fmt.Sprintf("> %s\n", v)
+			return m, tea.Sequence(drawOutputCommand, tea.Batch(m.spinner.Tick, callMakeQuery(m.apiKey, m.queries)))
 		}
 
 	case responseMsg:
@@ -224,7 +259,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.queries[len(m.queries)-1].extractedResponse = body
 		m.queries[len(m.queries)-1].formattedResponse = formatted
 		m.isReceivingInput = true
-		return m, nil
+		m.drawBuffer = formatted
+		return m, tea.Batch(drawOutputCommand, textinput.Blink)
 
 	case error:
 		m.err = msg
@@ -244,26 +280,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if m.drawBuffer != "" {
+		// fmt.Printf("Hi!\n")
+		return ""
+	}
 	var s string
 
-	for i, q := range m.queries {
-		if q.prompt != "" && !(m.runWithArgs && i == 0) {
-			s += fmt.Sprintf("> %s\n", q.prompt)
-		}
-		if q.formattedResponse != "" {
-			s += q.formattedResponse
-		}
-	}
+	// s += m.cachedOutput
 	if m.isLoading {
 		s += m.spinner.View()
 	}
 	if m.isReceivingInput {
 		s += m.textInput.View()
 	}
-	if m.isCopying {
-		placeholderStyle := lipgloss.NewStyle().Faint(true)
-		s += placeholderStyle.Render("Copied to clipboard.\n")
-	}
+	// if m.isCopying {
+	// 	placeholderStyle := lipgloss.NewStyle().Faint(true)
+	// 	s += placeholderStyle.Render("Copied to clipboard.\n")
+	// }
 	return s
 }
 
