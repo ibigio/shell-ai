@@ -223,15 +223,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isCopying = true
 				m.isLoading = false
 				m.isReceivingInput = false
-				placeholderStyle := lipgloss.NewStyle().Faint(true)
-				m.drawBuffer = placeholderStyle.Render("Copied to clipboard.\n")
-				return m, tea.Batch(drawOutputCommand, tea.Quit)
+				return m, tea.Quit
 			}
 			m.queries = append(m.queries, queryModel{prompt: v})
 			m.textInput.SetValue("")
 			m.isLoading = true
 			m.isReceivingInput = false
-			m.drawBuffer = fmt.Sprintf("> %s\n", v)
+
+			placeholderStyle := lipgloss.NewStyle().Faint(true)
+			m.drawBuffer = placeholderStyle.Render(fmt.Sprintf("> %s\n", v))
 			return m, tea.Sequence(drawOutputCommand, tea.Batch(m.spinner.Tick, callMakeQuery(m.apiKey, m.queries)))
 		}
 
@@ -260,7 +260,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.queries[len(m.queries)-1].formattedResponse = formatted
 		m.isReceivingInput = true
 		m.drawBuffer = formatted
-		return m, tea.Batch(drawOutputCommand, textinput.Blink)
+		return m, tea.Sequence(drawOutputCommand, textinput.Blink)
 
 	case error:
 		m.err = msg
@@ -293,10 +293,10 @@ func (m model) View() string {
 	if m.isReceivingInput {
 		s += m.textInput.View()
 	}
-	// if m.isCopying {
-	// 	placeholderStyle := lipgloss.NewStyle().Faint(true)
-	// 	s += placeholderStyle.Render("Copied to clipboard.\n")
-	// }
+	if m.isCopying {
+		placeholderStyle := lipgloss.NewStyle().Faint(true)
+		s += placeholderStyle.Render("Copied to clipboard.\n")
+	}
 	return s
 }
 
