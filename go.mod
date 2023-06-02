@@ -1,4 +1,4 @@
-module shell_ai
+module q
 
 go 1.15
 
