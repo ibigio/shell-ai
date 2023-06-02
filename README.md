@@ -10,6 +10,12 @@ brew tap ibigio/ibigio
 brew install shell-ai
 ```
 
+or
+
+```bash
+curl https://raw.githubusercontent.com/ibigio/shell-ai/main/intsall.sh | bash
+```
+
 ## Usage
 
 Type `q` followed by a description of a shell command you want to write!
