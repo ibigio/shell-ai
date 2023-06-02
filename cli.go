@@ -105,7 +105,7 @@ func ParseInput(input string) (string, bool) {
 func makeQuery(apiKey string, queries []queryModel) (string, error) {
 	// turn queries into Messages array
 	messages := []Message{
-		{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. Always output only the command, unless the user is asking a question, in which case answer it very briefly and well."},
+		{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. Always output only the command in a code block, unless the user is asking a question, in which case answer it very briefly and well."},
 		{Role: "user", Content: "print my local ip address on a mac"},
 		{Role: "assistant", Content: "```bash\nifconfig | grep \"inet \" | grep -v 127.0.0.1 | awk '{print $2}'\n```"},
 	}

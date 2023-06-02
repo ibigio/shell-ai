@@ -1,0 +1,31 @@
+builds:
+  - binary: shell_ai
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -mod=vendor
+
+release:
+  prerelease: auto
+
+universal_binaries:
+  - replace: true
+
+brews:
+  - name: shell-ai
+    homepage: "https://github.com/ibigio/shell-ai"
+    tap:
+      owner: ibigio
+      name: homebrew-ibigio
+    commit_author:
+      name: ibigio
+      email: ilanbigio@gmail.com
+
+checksum:
+  name_template: "checksums.txt"
