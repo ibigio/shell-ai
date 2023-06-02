@@ -15,29 +15,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type State int
+
 const (
-	codePrefix     = "[code]"
-	markdownPrefix = "[markdown]"
+	Loading State = iota
+	RecevingInput
+	Copying
 )
 
-type queryModel struct {
-	prompt            string
-	rawResponse       string
-	extractedResponse string
-	formattedResponse string
-}
-
 type model struct {
-	apiKey    string
+	client           *OpenAIClient
+	markdownRenderer *glamour.TermRenderer
+
 	textInput textinput.Model
 	spinner   spinner.Model
 
-	queries      []queryModel
-	cachedOutput string
-
-	isLoading        bool
-	isReceivingInput bool
-	isCopying        bool
+	state                 State
+	query                 string
+	latestCommandResponse string
 
 	drawBuffer string
 
@@ -46,93 +41,167 @@ type model struct {
 }
 
 type loadMsg struct{}
-type responseMsg struct{ response string }
+type responseMsg struct {
+	response string
+	err      error
+}
+type queryMsg struct{}
 type drawOutputMsg struct{}
 
+// === Commands === //
+
+func makeQuery(client *OpenAIClient, query string) tea.Cmd {
+	return func() tea.Msg {
+		response, err := client.Query(query)
+		return responseMsg{response: response, err: err}
+	}
+}
+
 func drawOutputCommand() tea.Msg {
+	// wait for the screen to clear
+	// (this is kind of hacky but it works)
 	time.Sleep(50 * time.Millisecond)
 	return drawOutputMsg{}
 }
 
-func callAPI() tea.Msg {
-	time.Sleep(1 * time.Second)
-	return responseMsg{response: "Hello World!"}
-}
+// === Msg Handlers === //
 
-func extractCodeBlock(s string) (string, bool) {
-	trimmed := strings.TrimSpace(s)
-	if strings.HasPrefix(trimmed, "```") && strings.HasSuffix(trimmed, "```") {
-		// There might be a language hint after the first ```
-		// Example: ```go
-		// We should remove this if it's present
-		content := strings.TrimPrefix(trimmed, "```")
-		content = strings.TrimSuffix(content, "```")
-		// Find newline after the first ```
-		newlinePos := strings.Index(content, "\n")
-		if newlinePos != -1 {
-			// Check if there's a word immediately after the first ```
-			if content[0:newlinePos] == strings.TrimSpace(content[0:newlinePos]) {
-				// If so, remove that part from the content
-				content = content[newlinePos+1:]
-			}
+func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
+	if m.state != RecevingInput {
+		return m, nil
+	}
+	v := m.textInput.Value()
+
+	// No input, copy and quit.
+	if v == "" {
+		if m.latestCommandResponse == "" {
+			return m, tea.Quit
 		}
-		// Strip the final newline, if present
-		if content[len(content)-1] == '\n' {
-			content = content[:len(content)-1]
-		}
-		return content, true
-	}
-	return s, false
-}
-
-func ParseInput(input string) (string, bool) {
-	var isCode bool
-	var content string
-
-	if strings.HasPrefix(input, codePrefix) {
-		isCode = true
-		content = strings.TrimSpace(input[len(codePrefix):])
-	} else if strings.HasPrefix(input, markdownPrefix) {
-		isCode = false
-		content = strings.TrimSpace(input[len(markdownPrefix):])
-	} else {
-		content = input
-	}
-
-	return content, isCode
-}
-
-func makeQuery(apiKey string, queries []queryModel) (string, error) {
-	// turn queries into Messages array
-	messages := []Message{
-		{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. Always output only the command in a code block, unless the user is asking a question, in which case answer it very briefly and well."},
-		{Role: "user", Content: "print my local ip address on a mac"},
-		{Role: "assistant", Content: "```bash\nifconfig | grep \"inet \" | grep -v 127.0.0.1 | awk '{print $2}'\n```"},
-	}
-	for _, q := range queries {
-		messages = append(messages, Message{Role: "user", Content: q.prompt})
-		if q.rawResponse != "" {
-			messages = append(messages, Message{Role: "assistant", Content: q.rawResponse})
-		}
-	}
-	completion, err := QueryOpenAIAssistant(apiKey, messages)
-	if err != nil {
-		return "", err
-	}
-	return completion, nil
-}
-
-func callMakeQuery(apiKey string, queries []queryModel) tea.Cmd {
-	return func() tea.Msg {
-		completion, err := makeQuery(apiKey, queries)
+		err := clipboard.WriteAll(m.latestCommandResponse)
 		if err != nil {
-			return responseMsg{response: fmt.Sprintf("Error: %v", err)}
+			fmt.Println("Failed to copy text to clipboard:", err)
+			return m, tea.Quit
 		}
-		return responseMsg{response: completion}
+		m.state = Copying
+		return m, tea.Quit
 	}
+	// Input, run query.
+	m.textInput.SetValue("")
+	m.query = v
+	m.state = Loading
+	placeholderStyle := lipgloss.NewStyle().Faint(true)
+	m.drawBuffer = placeholderStyle.Render(fmt.Sprintf("> %s\n", v))
+	return m, tea.Sequence(drawOutputCommand, tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
 }
 
-func initialModel(prompt string, apiKey string) model {
+func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
+	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, ESC to quit"
+
+	// really shitty error handling but it's better than nothing
+	if msg.err != nil {
+		m.state = RecevingInput
+		style := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+		m.drawBuffer = style.Render("\n  Error: Failed to connect to OpenAI.\n\n")
+		return m, tea.Sequence(drawOutputCommand, textinput.Blink)
+	}
+
+	// parse out the code block
+	code, isCode := extractCodeBlock(msg.response)
+	m.latestCommandResponse = code
+
+	// format nicely
+	formatted, err := m.markdownRenderer.Render(msg.response)
+	if err != nil {
+		// TODO: handle error
+		panic(err)
+	}
+
+	// trim trailing newlines
+	formatted = strings.TrimPrefix(formatted, "\n")
+
+	// Add newline for non-code blocks (hacky)
+	if !isCode {
+		formatted = "\n" + formatted
+	}
+
+	m.state = RecevingInput
+	m.latestCommandResponse = code
+	m.drawBuffer = formatted
+	return m, tea.Sequence(drawOutputCommand, textinput.Blink)
+}
+
+func (m model) handleDrawOutputMsg() (tea.Model, tea.Cmd) {
+	if m.drawBuffer != "" {
+		fmt.Printf("%s", m.drawBuffer)
+	}
+	m.drawBuffer = ""
+	return m, nil
+}
+
+// === Init, Update, View === //
+
+func (m model) Init() tea.Cmd {
+	if m.runWithArgs {
+		return tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query))
+	}
+	return textinput.Blink
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc, tea.KeyCtrlD:
+			return m, tea.Quit
+
+		case tea.KeyEnter:
+			return m.handleKeyEnter()
+		}
+
+	case drawOutputMsg:
+		return m.handleDrawOutputMsg()
+
+	case responseMsg:
+		return m.handleResponseMsg(msg)
+
+	case error:
+		m.err = msg
+		return m, nil
+	}
+	// Update spinner or cursor.
+	switch m.state {
+	case Loading:
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+	case RecevingInput:
+		m.textInput, cmd = m.textInput.Update(msg)
+		return m, cmd
+	}
+	return m, nil
+}
+
+func (m model) View() string {
+	if m.state == Copying {
+		placeholderStyle := lipgloss.NewStyle().Faint(true)
+		return placeholderStyle.Render("Copied to clipboard.\n")
+	}
+	if m.drawBuffer != "" {
+		return ""
+	}
+	switch m.state {
+	case Loading:
+		return m.spinner.View()
+	case RecevingInput:
+		return m.textInput.View()
+	}
+	return ""
+}
+
+// === Initial Model Setup === //
+
+func initialModel(prompt string, client *OpenAIClient) model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter natural langauge query"
 	ti.Focus()
@@ -144,164 +213,33 @@ func initialModel(prompt string, apiKey string) model {
 
 	runWithArgs := prompt != ""
 
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+	)
 	model := model{
-		apiKey:    apiKey,
-		textInput: ti,
-		spinner:   s,
-
-		queries:      []queryModel{},
-		cachedOutput: "",
-
-		isLoading:        false,
-		isReceivingInput: true,
-		isCopying:        false,
-
-		runWithArgs: false,
-		err:         nil,
+		client:                client,
+		markdownRenderer:      r,
+		textInput:             ti,
+		spinner:               s,
+		state:                 RecevingInput,
+		query:                 "",
+		latestCommandResponse: "",
+		runWithArgs:           false,
+		err:                   nil,
 	}
 
 	if runWithArgs {
 		model.runWithArgs = true
-		model.queries = append(model.queries, queryModel{prompt: prompt})
-		model.isReceivingInput = false
-		model.isLoading = true
+		model.state = Loading
+		model.query = prompt
 	}
 	return model
 }
 
-func (m model) updateCacheOutput() tea.Model {
-	var s string
-	for i, q := range m.queries {
-		if q.prompt != "" && !(m.runWithArgs && i == 0) {
-			s += fmt.Sprintf("> %s\n", q.prompt)
-		}
-		if q.formattedResponse != "" {
-			s += q.formattedResponse
-		}
-	}
-	m.cachedOutput = s
-	fmt.Printf(s)
-	return m
-}
-
-func (m model) Init() tea.Cmd {
-	if m.runWithArgs {
-		return tea.Batch(m.spinner.Tick, callMakeQuery(m.apiKey, m.queries))
-	}
-	return textinput.Blink
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-
-	case drawOutputMsg:
-		if m.drawBuffer != "" {
-			fmt.Printf("%s", m.drawBuffer)
-		}
-		m.drawBuffer = ""
-		return m, nil
-
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc, tea.KeyCtrlD:
-			return m, tea.Quit
-
-		case tea.KeyEnter:
-			if !m.isReceivingInput {
-				return m, nil
-			}
-			v := m.textInput.Value()
-			if v == "" {
-				err := clipboard.WriteAll(m.queries[len(m.queries)-1].extractedResponse)
-				if err != nil {
-					fmt.Println("Failed to copy text to clipboard:", err)
-					return m, tea.Quit
-				}
-
-				m.isCopying = true
-				m.isLoading = false
-				m.isReceivingInput = false
-				return m, tea.Quit
-			}
-			m.queries = append(m.queries, queryModel{prompt: v})
-			m.textInput.SetValue("")
-			m.isLoading = true
-			m.isReceivingInput = false
-
-			placeholderStyle := lipgloss.NewStyle().Faint(true)
-			m.drawBuffer = placeholderStyle.Render(fmt.Sprintf("> %s\n", v))
-			return m, tea.Sequence(drawOutputCommand, tea.Batch(m.spinner.Tick, callMakeQuery(m.apiKey, m.queries)))
-		}
-
-	case responseMsg:
-		m.isLoading = false
-
-		m.textInput.Placeholder = "Follow up, ENTER to copy & quit, ESC to quit"
-
-		// // set last query response
-		// body, isCode := ParseInput(msg.response)
-		body, isCode := extractCodeBlock(msg.response)
-
-		r, _ := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
-		)
-		formatted, err := r.Render(msg.response)
-		if isCode {
-			formatted = strings.TrimPrefix(formatted, "\n")
-		}
-		if err != nil {
-			panic(err)
-		}
-
-		m.queries[len(m.queries)-1].rawResponse = msg.response
-		m.queries[len(m.queries)-1].extractedResponse = body
-		m.queries[len(m.queries)-1].formattedResponse = formatted
-		m.isReceivingInput = true
-		m.drawBuffer = formatted
-		return m, tea.Sequence(drawOutputCommand, textinput.Blink)
-
-	case error:
-		m.err = msg
-		return m, nil
-
-	}
-
-	if m.isLoading {
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
-	}
-	if m.isReceivingInput {
-		m.textInput, cmd = m.textInput.Update(msg)
-		return m, cmd
-	}
-	return m, nil
-}
-
-func (m model) View() string {
-	if m.drawBuffer != "" {
-		// fmt.Printf("Hi!\n")
-		return ""
-	}
-	var s string
-
-	// s += m.cachedOutput
-	if m.isLoading {
-		s += m.spinner.View()
-	}
-	if m.isReceivingInput {
-		s += m.textInput.View()
-	}
-	if m.isCopying {
-		placeholderStyle := lipgloss.NewStyle().Faint(true)
-		s += placeholderStyle.Render("Copied to clipboard.\n")
-	}
-	return s
-}
+// === Main === //
 
 var rootCmd = &cobra.Command{
-	Use:   "ai [request]",
+	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
 	Run: func(cmd *cobra.Command, args []string) {
 		// join args into a single string separated by spaces
@@ -318,7 +256,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		p := tea.NewProgram(initialModel(prompt, apiKey))
+		p := tea.NewProgram(initialModel(prompt, NewClient(apiKey)))
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
 			os.Exit(1)
