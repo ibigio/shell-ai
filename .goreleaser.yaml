@@ -21,6 +21,9 @@ brews:
     commit_author:
       name: ibigio
       email: ilanbigio@gmail.com
+    install: |
+      bin.install "shell-ai"
+      bin.install_symlink "shell-ai" => "q"
 
 archives:
   - format: tar.gz
