@@ -1,23 +1,13 @@
 # ShellAI
-A fantastic little AI Shell Assistant powered by GPT4.
+A fantastic little AI Shell Assistant powered by GPT.
 
 _Turn natural language into shell commands, and ask open-ended questions!_
 
-## Setup
+## Install
 
-1. Install Deno. (https://deno.land/manual/getting_started/installation)
-```
-brew install deno
-```
-
-2. Install Shell AI.
-```
-deno install --allow-read --allow-env --allow-net --name q https://raw.githubusercontent.com/ibigio/shell-ai/main/shell_ai.ts
-```
-
-3. Set the `SHELL_AI_KEY` environment variable to your user key. (Add this line to your `.zshrc` or `.bashrc` as well!)
-```
-export SHELL_AI_KEY="[insert key here]"
+```bash
+brew tap ibigio/ibigio
+brew install shell-ai
 ```
 
 ## Usage
