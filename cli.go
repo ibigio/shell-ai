@@ -238,25 +238,36 @@ func initialModel(prompt string, client *OpenAIClient) model {
 
 // === Main === //
 
+func printAPIKeyNotSet() {
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+	)
+	message := `
+	OPENAI_API_KEY environment variable not set.
+
+	1. Generate your API key at https://platform.openai.com/account/api-keys
+	2. Set your key by running:
+	`
+	message += "```bash\nexport OPENAPI_API_KEY=[your key]\n```"
+	r.Render(message)
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
 	Run: func(cmd *cobra.Command, args []string) {
 		// join args into a single string separated by spaces
-		var prompt string
-		if len(args) > 0 {
-			prompt = args[0]
-			for _, arg := range args[1:] {
-				prompt += " " + arg
-			}
-		}
+		prompt := strings.Join((args), " ")
 		apiKey := os.Getenv("OPENAI_API_KEY")
+		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
 		if apiKey == "" {
 			fmt.Println("OPENAI_API_KEY environment variable not set")
+			fmt.Println("Generate your API key at https://platform.openai.com/account/api-keys")
+			fmt.Println("Set your key by running")
 			os.Exit(1)
 		}
 
-		p := tea.NewProgram(initialModel(prompt, NewClient(apiKey)))
+		p := tea.NewProgram(initialModel(prompt, NewClient(apiKey, modelOverride)))
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
 			os.Exit(1)

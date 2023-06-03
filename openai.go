@@ -53,24 +53,38 @@ type OpenAIClient struct {
 	httpClient *http.Client
 }
 
-const (
-	prompt = ""
-)
+func promptForModel(model string) []Message {
+	switch model {
+	case "gpt-4":
+		return []Message{
+			{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well."},
+			{Role: "user", Content: "print hi"},
+			{Role: "assistant", Content: "```bash\necho \"hi\"\n```"},
+		}
+	}
+	// default for gpt-3.5-turbo
+	return []Message{
+		{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the question the users asks. Do not add explanations for your code. Do not output any non-code words at all. Just output the code. Short is better. However, if the user is clearly asking a general question then answer it very briefly and well."},
+		{Role: "user", Content: "get the current time from some website"},
+		{Role: "assistant", Content: "```bash\ncurl -s http://worldtimeapi.org/api/ip | jq '.datetime'\n```"},
+		{Role: "user", Content: "print hi"},
+		{Role: "assistant", Content: "```bash\necho \"hi\"\n```"},
+	}
+}
 
-func NewClient(apiKey string) *OpenAIClient {
-	messages := []Message{
-		{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. Always output only the command in a code block, unless the user is asking a question, in which case answer it very briefly and well."},
-		{Role: "user", Content: "print my local ip address on a mac"},
-		{Role: "assistant", Content: "```bash\nifconfig | grep \"inet \" | grep -v 127.0.0.1 | awk '{print $2}'\n```"},
+func NewClient(apiKey string, modelOverride string) *OpenAIClient {
+	model := "gpt-3.5-turbo"
+	if modelOverride != "" {
+		model = modelOverride
 	}
 
 	return &OpenAIClient{
 		apiKey:    apiKey,
 		url:       "https://api.openai.com/v1/chat/completions",
-		model:     "gpt-3.5-turbo",
+		model:     model,
 		maxTokens: 256,
 
-		messages: messages,
+		messages: promptForModel(model),
 
 		httpClient: &http.Client{},
 	}
@@ -134,54 +148,3 @@ func (c *OpenAIClient) call(payload Payload) (Message, error) {
 
 	return response.Choices[0].Message, nil
 }
-
-// func (c *OpenAIClient) QueryOpenAIAssistant(messages []Message) (string, error) {
-
-// 	payload := Payload{
-// 		Model:       "gpt-3.5-turbo",
-// 		Messages:    messages,
-// 		Temperature: 0,
-// 		MaxTokens:   256,
-// 	}
-// 	payloadBytes, err := json.Marshal(payload)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to marshal payload: %w", err)
-// 	}
-
-// 	client := &http.Client{}
-// 	req, err := http.NewRequest("POST", c.url, bytes.NewReader(payloadBytes))
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to create request: %w", err)
-// 	}
-
-// 	req.Header.Set("Content-Type", "application/json")
-// 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
-
-// 	resp, err := client.Do(req)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to make the API request: %w", err)
-// 	}
-// 	defer resp.Body.Close()
-
-// 	if resp.StatusCode != http.StatusOK {
-// 		return "", fmt.Errorf("API request failed: %s", resp.Status)
-// 	}
-
-// 	bodyBytes, err := ioutil.ReadAll(resp.Body)
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to read response body: %w", err)
-// 	}
-
-// 	var response Response
-// 	if err := json.Unmarshal(bodyBytes, &response); err != nil {
-// 		return "", fmt.Errorf("failed to unmarshal response: %w", err)
-// 	}
-
-// 	completions := response.Choices
-// 	if len(completions) == 0 {
-// 		return "", fmt.Errorf("no completions found in response")
-// 	}
-
-// 	lastCompletion := completions[len(completions)-1]
-// 	return lastCompletion.Message.Content, nil
-// }
