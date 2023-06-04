@@ -35,6 +35,7 @@ type model struct {
 	latestCommandResponse string
 
 	drawBuffer string
+	maxWidth   int
 
 	runWithArgs bool
 	err         error
@@ -100,8 +101,12 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	// really shitty error handling but it's better than nothing
 	if msg.err != nil {
 		m.state = RecevingInput
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-		m.drawBuffer = style.Render("\n  Error: Failed to connect to OpenAI.\n\n")
+		styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+		styleDim := lipgloss.NewStyle().Faint(true)
+
+		m.drawBuffer = fmt.Sprintf("\n  %v\n\n  %v\n\n",
+			styleRed.Render("Error: Failed to connect to OpenAI."),
+			styleDim.Render(msg.err.Error()))
 		return m, tea.Sequence(drawOutputCommand, textinput.Blink)
 	}
 
@@ -202,10 +207,12 @@ func (m model) View() string {
 // === Initial Model Setup === //
 
 func initialModel(prompt string, client *OpenAIClient) model {
+	maxWidth := 100
+
 	ti := textinput.New()
 	ti.Placeholder = "Enter natural langauge query"
 	ti.Focus()
-	ti.CharLimit = 256
+	ti.CharLimit = maxWidth
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
@@ -224,6 +231,8 @@ func initialModel(prompt string, client *OpenAIClient) model {
 		state:                 RecevingInput,
 		query:                 "",
 		latestCommandResponse: "",
+		drawBuffer:            "",
+		maxWidth:              maxWidth,
 		runWithArgs:           false,
 		err:                   nil,
 	}
@@ -238,18 +247,21 @@ func initialModel(prompt string, client *OpenAIClient) model {
 
 // === Main === //
 
-func printAPIKeyNotSet() {
+func printAPIKeyNotSetMessage() {
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 	)
-	message := `
-	OPENAI_API_KEY environment variable not set.
 
+	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+
+	msg1 := styleRed.Render("OPENAI_API_KEY environment variable not set.")
+	msg2, _ := r.Render(`
 	1. Generate your API key at https://platform.openai.com/account/api-keys
+	2. Add your credit card in the API (for the free trial)
 	2. Set your key by running:
-	`
-	message += "```bash\nexport OPENAPI_API_KEY=[your key]\n```"
-	r.Render(message)
+	` + "\n```bash\nexport OPENAPI_API_KEY=[your key]\n```")
+
+	fmt.Printf("\n  %v%v", msg1, msg2)
 }
 
 var rootCmd = &cobra.Command{
@@ -261,9 +273,7 @@ var rootCmd = &cobra.Command{
 		apiKey := os.Getenv("OPENAI_API_KEY")
 		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
 		if apiKey == "" {
-			fmt.Println("OPENAI_API_KEY environment variable not set")
-			fmt.Println("Generate your API key at https://platform.openai.com/account/api-keys")
-			fmt.Println("Set your key by running")
+			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
 
