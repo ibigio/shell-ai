@@ -16,6 +16,12 @@ or
 curl https://raw.githubusercontent.com/ibigio/shell-ai/main/intsall.sh | bash
 ```
 
+and set your OPENAI key [(get one here)](https://platform.openai.com/account/api-keys) like so:
+
+```bash
+export OPENAI_API_KEY=[your key]
+```
+
 ## Usage
 
 Type `q` followed by a description of a shell command you want to write!
@@ -50,4 +56,12 @@ And deep.
 ```
 $ q what is the meaning of life
 42
+```
+
+## More
+
+By default this uses the `gpt-3.5-turbo` model, but if you want to use `gpt-4` you can override like so:
+
+```bash
+export OPENAI_MODEL_OVERRIDE="gpt-4"
 ```
