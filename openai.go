@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/r3labs/sse"
 )
@@ -89,7 +90,9 @@ func NewClient(apiKey string, modelOverride string) *OpenAIClient {
 
 		messages: promptForModel(model),
 
-		httpClient: &http.Client{},
+		httpClient: &http.Client{
+			Timeout: time.Second * 10,
+		},
 	}
 }
 

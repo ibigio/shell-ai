@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -40,6 +41,7 @@ func processStreaming(resp *http.Response, controller chan string) {
 		}
 
 		line = strings.TrimSpace(line)
+		fmt.Println(line)
 
 		if line == "data: [DONE]" {
 			controller <- "[DONE]"
@@ -57,6 +59,7 @@ func processStreaming(resp *http.Response, controller chan string) {
 			}
 
 			content := responseData.Choices[0].Delta.Content
+			fmt.Println("Content:", content)
 			if counter < 2 && strings.Count(content, "\n") > 0 {
 				continue
 			}
@@ -67,12 +70,12 @@ func processStreaming(resp *http.Response, controller chan string) {
 	}
 }
 
-func main() {
-	apiEndpoint := "https://api.openai.com/v1/completions"
+func checkEndpoint() {
+	apiEndpoint := "https://api.openai.com/v1/chat/completions"
 
-	requestPayload := RequestPayload{
-		Model:       "text-davinci-002",
-		Prompt:      "Once upon a time",
+	requestPayload := Payload{
+		Model:       "gpt-3.5-turbo",
+		Messages
 		MaxTokens:   10,
 		Temperature: 0.7,
 		Stream:      true,
@@ -90,8 +93,10 @@ func main() {
 		panic(err)
 	}
 
+	apiKey := os.Getenv("OPENAI_API_KEY")
+
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer <YOUR-API-KEY>") // Replace <YOUR-API-KEY> with your actual API key
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", apiKey)) // Replace <YOUR-API-KEY> with your actual API key
 
 	client := &http.Client{
 		Timeout: time.Second * 60,
@@ -116,6 +121,8 @@ func main() {
 			if !ok {
 				break
 			}
+
+			fmt.Println("P", msg)
 
 			if msg == "[DONE]" {
 				fmt.Println("Stream finished.")

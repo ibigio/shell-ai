@@ -276,6 +276,7 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
+	checkEndpoint()
 	if err := rootCmd.Execute(); err != nil {
 		panic(err)
 	}
