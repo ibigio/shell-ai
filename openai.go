@@ -1,14 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
-
-	"github.com/r3labs/sse"
 )
 
 type Payload struct {
@@ -46,6 +46,22 @@ type Response struct {
 	} `json:"choices"`
 }
 
+type Choice struct {
+	Delta struct {
+		Content string `json:"content"`
+	} `json:"delta"`
+	Index        int    `json:"index"`
+	FinishReason string `json:"finish_reason"`
+}
+
+type ResponseData struct {
+	ID      string   `json:"id"`
+	Object  string   `json:"object"`
+	Created int      `json:"created"`
+	Model   string   `json:"model"`
+	Choices []Choice `json:"choices"`
+}
+
 type OpenAIClient struct {
 	apiKey    string
 	url       string
@@ -53,6 +69,8 @@ type OpenAIClient struct {
 	maxTokens int
 
 	messages []Message
+
+	streamCallback func(string, error)
 
 	httpClient *http.Client
 }
@@ -94,6 +112,22 @@ func NewClient(apiKey string, modelOverride string) *OpenAIClient {
 			Timeout: time.Second * 10,
 		},
 	}
+}
+
+func (c *OpenAIClient) createRequest(payload Payload) (*http.Request, error) {
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", c.url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	return req, nil
 }
 
 func (c *OpenAIClient) Query(query string) (string, error) {
@@ -157,21 +191,52 @@ func (c *OpenAIClient) call(payload Payload) (Message, error) {
 	return response.Choices[0].Message, nil
 }
 
+func (c *OpenAIClient) processStreaming(resp *http.Response) (string, error) {
+	counter := 0
+	streamReader := bufio.NewReader(resp.Body)
+	totalData := ""
+	for {
+		line, err := streamReader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		line = strings.TrimSpace(line)
+		// fmt.Println(line)
+		if line == "data: [DONE]" {
+			// c.streamCallback(totalData, nil)
+			// controller <- "[DONE]"
+			break
+		}
+
+		if strings.HasPrefix(line, "data:") {
+			payload := strings.TrimPrefix(line, "data:")
+
+			var responseData ResponseData
+			err = json.Unmarshal([]byte(payload), &responseData)
+			if err != nil {
+				fmt.Println("Error parsing data:", err)
+				continue
+			}
+
+			content := responseData.Choices[0].Delta.Content
+			// fmt.Println("Content:", content)
+			if counter < 2 && strings.Count(content, "\n") > 0 {
+				continue
+			}
+
+			totalData += content
+			c.streamCallback(totalData, nil)
+			// controller <- content
+			counter++
+		}
+	}
+	fmt.Println("Done process")
+	return totalData, nil
+}
+
 func (c *OpenAIClient) callStream(payload Payload) (Message, error) {
-	fmt.Println("callStream")
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to marshal payload: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", c.url, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Add("Accept", "text/event-stream")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
+	req, err := c.createRequest(payload)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -179,43 +244,12 @@ func (c *OpenAIClient) callStream(payload Payload) (Message, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		client := sse.NewClient(c.url)
-		err = client.SubscribeRaw(func(msg *sse.Event) {
-			responseText := string(msg.Data)
-
-			if responseText == "[DONE]" {
-				fmt.Println("Stream finished.")
-				return
-			}
-
-			fmt.Println("Event received:", responseText)
-		})
-
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		responseBody, _ := ioutil.ReadAll(resp.Body)
-		fmt.Println("Error:", resp.StatusCode, string(responseBody))
+	if resp.StatusCode != 200 {
+		return Message{}, fmt.Errorf("API request failed: %s", resp.Status)
 	}
+	content, err := c.processStreaming(resp)
 
-	fmt.Println(req)
-
-	// client := sse.NewClient(c.url)
-	// client.Connection = c.httpClient
-	// fmt.Println("subscribing...")
-	// err = client.SubscribeRaw(func(msg *sse.Event) {
-	// 	// Got some data!
-	// 	fmt.Println("dat!")
-	// 	fmt.Println(msg.Data)
-
-	// })
-	// if err != nil {
-	// 	return Message{}, fmt.Errorf("failed to subscribe: %w", err)
-	// }
-	// fmt.Println("subscribed")
-	return Message{}, nil
+	return Message{Role: "assistant", Content: content}, nil
 }
 
 // func (openaiClient *OpenAIClient) handleSSEEvents(callback EventCallback, w http.ResponseWriter, r *http.Request) {
