@@ -96,7 +96,7 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 }
 
 func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
-	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, ESC to quit"
+	m.textInput.Placeholder = "Follow up with another prompt, ENTER to copy & quit, Ctrl+c to quit"
 
 	// really shitty error handling but it's better than nothing
 	if msg.err != nil {
