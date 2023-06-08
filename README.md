@@ -48,7 +48,7 @@ find . -name "*administrative*"
 
 
 <details>
-<summary>I want more even power.</summary>
+<summary>I want even more power.</summary>
 <br>
 By default this tool uses the `gpt-3.5-turbo` model, but if you want to use `gpt-4` you can override like so:
 
