@@ -17,7 +17,7 @@ brews:
     homepage: "https://github.com/ibigio/shell-ai"
     tap:
       owner: ibigio
-      name: homebrew-ibigio
+      name: homebrew-tap
     commit_author:
       name: ibigio
       email: ilanbigio@gmail.com
