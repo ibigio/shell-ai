@@ -126,7 +126,7 @@ func (m model) formatResponse(response string, isCode bool) (string, error) {
 }
 
 func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
-	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, ESC to quit"
+	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, CTRL+C to quit"
 	m.formattedPartialResponse = ""
 
 	// really shitty error handling but it's better than nothing
@@ -257,7 +257,7 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 	maxWidth := 100
 
 	ti := textinput.New()
-	ti.Placeholder = "Enter natural langauge query"
+	ti.Placeholder = "Describe a shell command, or ask a question."
 	ti.Focus()
 	ti.CharLimit = maxWidth
 
