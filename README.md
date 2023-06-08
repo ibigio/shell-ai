@@ -10,7 +10,7 @@ A delightfully minimal, yet awfully powerful AI Shell Assistant.
 ## Install
 
 ```bash
-brew tap ibigio/ibigio
+brew tap ibigio/tap
 brew install shell-ai
 ```
 
