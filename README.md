@@ -1,7 +1,11 @@
 # ShellAI
-A fantastic little AI Shell Assistant powered by GPT.
+A delightfully minimal, yet awfully powerful AI Shell Assistant.
 
-_Turn natural language into shell commands, and ask open-ended questions!_
+>
+> "Ten minutes of Googling is now ten seconds in the terminal."
+>
+>   ~ Joe C.
+>
 
 ## Install
 
