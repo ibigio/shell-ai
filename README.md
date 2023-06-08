@@ -17,7 +17,7 @@ brew install shell-ai
 or
 
 ```bash
-curl https://raw.githubusercontent.com/ibigio/shell-ai/main/intsall.sh | bash
+curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
 ```
 
 and set your OPENAI key [(get one here)](https://platform.openai.com/account/api-keys) like so:
