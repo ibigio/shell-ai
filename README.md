@@ -22,11 +22,13 @@ or
 curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
 ```
 
-and set your OPENAI key [(get one here)](https://platform.openai.com/account/api-keys) like so:
+and set your OPENAI key ([get one here](https://platform.openai.com/account/api-keys)) like so:
 
 ```bash
 export OPENAI_API_KEY=[your key]
 ```
+
+(Don't forget to set up billing with OpenAI.)
 
 ## Usage
 
