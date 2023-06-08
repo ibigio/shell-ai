@@ -5,6 +5,7 @@ REPO_OWNER="ibigio"
 REPO_NAME="shell-ai"
 TOOL_NAME="shell-ai"
 TOOL_SYMLINK="q"
+INSTALL_DIR="$HOME/.local/bin"
 
 # Detect the platform (architecture and OS)
 ARCH="$(uname -m)"
@@ -25,8 +26,8 @@ mkdir -p "${TOOL_NAME}-temp"
 tar xzf "${TOOL_NAME}.tar.gz" -C "${TOOL_NAME}-temp"
 
 # Make the binary executable
-mv "${TOOL_NAME}-temp/${TOOL_NAME}" "/usr/local/bin/${TOOL_SYMLINK}"
-chmod +x /usr/local/bin/"${TOOL_SYMLINK}"
+mv "${TOOL_NAME}-temp/${TOOL_NAME}" "${INSTALL_DIR}/${TOOL_SYMLINK}"
+chmod +x "${INSTALL_DIR}"/"${TOOL_SYMLINK}"
 
 # # Clean up
 rm -rf "${TOOL_NAME}-temp"
