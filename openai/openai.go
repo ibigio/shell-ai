@@ -113,7 +113,7 @@ func NewClient(apiKey string, modelOverride string) *OpenAIClient {
 		messages: promptForModel(model),
 
 		httpClient: &http.Client{
-			Timeout: time.Second * 10,
+			Timeout: time.Second * 120,
 		},
 	}
 }
