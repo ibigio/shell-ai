@@ -20,12 +20,14 @@ type State int
 const (
 	Loading State = iota
 	RecevingInput
+	ReceivingResponse
 	Copying
 )
 
 type model struct {
 	client           *OpenAIClient
 	markdownRenderer *glamour.TermRenderer
+	p                *tea.Program
 
 	textInput textinput.Model
 	spinner   spinner.Model
@@ -33,6 +35,9 @@ type model struct {
 	state                 State
 	query                 string
 	latestCommandResponse string
+
+	partialResponse          string
+	formattedPartialResponse string
 
 	drawBuffer string
 	maxWidth   int
@@ -48,6 +53,11 @@ type responseMsg struct {
 }
 type queryMsg struct{}
 type drawOutputMsg struct{}
+type partialResponseMsg struct {
+	content string
+	err     error
+}
+type setPMsg struct{ p *tea.Program }
 
 // === Commands === //
 
@@ -95,8 +105,28 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 	return m, tea.Sequence(drawOutputCommand, tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
 }
 
+func (m model) formatResponse(response string, isCode bool) (string, error) {
+
+	// format nicely
+	formatted, err := m.markdownRenderer.Render(response)
+	if err != nil {
+		// TODO: handle error
+		panic(err)
+	}
+
+	// trim trailing newlines
+	formatted = strings.TrimPrefix(formatted, "\n")
+
+	// Add newline for non-code blocks (hacky)
+	if !isCode {
+		formatted = "\n" + formatted
+	}
+	return formatted, nil
+}
+
 func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, ESC to quit"
+	m.formattedPartialResponse = ""
 
 	// really shitty error handling but it's better than nothing
 	if msg.err != nil {
@@ -111,22 +141,16 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// parse out the code block
-	code, isCode := extractCodeBlock(msg.response)
-	m.latestCommandResponse = code
+	code := extractFirstCodeBlock(msg.response)
+	if code == "" {
+		m.latestCommandResponse = code
+	}
 
-	// format nicely
-	formatted, err := m.markdownRenderer.Render(msg.response)
+	isCode := startsWithCodeBlock(msg.response)
+	formatted, err := m.formatResponse(msg.response, isCode)
 	if err != nil {
 		// TODO: handle error
 		panic(err)
-	}
-
-	// trim trailing newlines
-	formatted = strings.TrimPrefix(formatted, "\n")
-
-	// Add newline for non-code blocks (hacky)
-	if !isCode {
-		formatted = "\n" + formatted
 	}
 
 	m.state = RecevingInput
@@ -135,9 +159,22 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	return m, tea.Sequence(drawOutputCommand, textinput.Blink)
 }
 
+func (m model) handlePartialResponseMsg(msg partialResponseMsg) (tea.Model, tea.Cmd) {
+	m.state = ReceivingResponse
+	isCode := startsWithCodeBlock(msg.content)
+	formatted, err := m.formatResponse(msg.content, isCode)
+	if err != nil {
+		// TODO: handle error
+		panic(err)
+	}
+	m.formattedPartialResponse = formatted
+	return m, nil
+}
+
 func (m model) handleDrawOutputMsg() (tea.Model, tea.Cmd) {
 	if m.drawBuffer != "" {
 		fmt.Printf("%s", m.drawBuffer)
+
 	}
 	m.drawBuffer = ""
 	return m, nil
@@ -171,6 +208,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case responseMsg:
 		return m.handleResponseMsg(msg)
 
+	case partialResponseMsg:
+		return m.handlePartialResponseMsg(msg)
+
+	case setPMsg:
+		m.p = msg.p
+		return m, nil
+
 	case error:
 		m.err = msg
 		return m, nil
@@ -200,6 +244,8 @@ func (m model) View() string {
 		return m.spinner.View()
 	case RecevingInput:
 		return m.textInput.View()
+	case ReceivingResponse:
+		return m.formattedPartialResponse
 	}
 	return ""
 }
@@ -264,6 +310,12 @@ func printAPIKeyNotSetMessage() {
 	fmt.Printf("\n  %v%v", msg1, msg2)
 }
 
+func streamHandler(p *tea.Program) func(content string, err error) {
+	return func(content string, err error) {
+		p.Send(partialResponseMsg{content, err})
+	}
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
@@ -276,8 +328,9 @@ var rootCmd = &cobra.Command{
 			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
-
-		p := tea.NewProgram(initialModel(prompt, NewClient(apiKey, modelOverride)))
+		c := NewClient(apiKey, modelOverride)
+		p := tea.NewProgram(initialModel(prompt, c))
+		c.streamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
 			os.Exit(1)

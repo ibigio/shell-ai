@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"strings"
+	"time"
 )
 
 type Payload struct {
@@ -15,6 +17,7 @@ type Payload struct {
 	Temperature float32   `json:"temperature"`
 	Stop        []string  `json:"stop,omitempty"`
 	Messages    []Message `json:"messages"`
+	Stream      bool      `json:"stream"`
 }
 
 type Message struct {
@@ -42,6 +45,22 @@ type Response struct {
 	} `json:"choices"`
 }
 
+type Choice struct {
+	Delta struct {
+		Content string `json:"content"`
+	} `json:"delta"`
+	Index        int    `json:"index"`
+	FinishReason string `json:"finish_reason"`
+}
+
+type ResponseData struct {
+	ID      string   `json:"id"`
+	Object  string   `json:"object"`
+	Created int      `json:"created"`
+	Model   string   `json:"model"`
+	Choices []Choice `json:"choices"`
+}
+
 type OpenAIClient struct {
 	apiKey    string
 	url       string
@@ -50,7 +69,14 @@ type OpenAIClient struct {
 
 	messages []Message
 
+	streamCallback func(string, error)
+
 	httpClient *http.Client
+}
+
+type SSEMessage struct {
+	content string
+	isDone  bool
 }
 
 func promptForModel(model string) []Message {
@@ -86,8 +112,24 @@ func NewClient(apiKey string, modelOverride string) *OpenAIClient {
 
 		messages: promptForModel(model),
 
-		httpClient: &http.Client{},
+		httpClient: &http.Client{
+			Timeout: time.Second * 10,
+		},
 	}
+}
+
+func (c *OpenAIClient) createRequest(payload Payload) (*http.Request, error) {
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+	req, err := http.NewRequest("POST", c.url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	return req, nil
 }
 
 func (c *OpenAIClient) Query(query string) (string, error) {
@@ -99,8 +141,9 @@ func (c *OpenAIClient) Query(query string) (string, error) {
 		Messages:    messages,
 		Temperature: 0,
 		MaxTokens:   c.maxTokens,
+		Stream:      true,
 	}
-	message, err := c.call(payload)
+	message, err := c.callStream(payload)
 	if err != nil {
 		return "", err
 	}
@@ -108,43 +151,51 @@ func (c *OpenAIClient) Query(query string) (string, error) {
 	return message.Content, nil
 }
 
-func (c *OpenAIClient) call(payload Payload) (Message, error) {
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to marshal payload: %w", err)
+func (c *OpenAIClient) processStream(resp *http.Response) (string, error) {
+	counter := 0
+	streamReader := bufio.NewReader(resp.Body)
+	totalData := ""
+	for {
+		line, err := streamReader.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSpace(line)
+		if line == "data: [DONE]" {
+			break
+		}
+		if strings.HasPrefix(line, "data:") {
+			payload := strings.TrimPrefix(line, "data:")
+
+			var responseData ResponseData
+			err = json.Unmarshal([]byte(payload), &responseData)
+			if err != nil {
+				fmt.Println("Error parsing data:", err)
+				continue
+			}
+			content := responseData.Choices[0].Delta.Content
+			if counter < 2 && strings.Count(content, "\n") > 0 {
+				continue
+			}
+			totalData += content
+			c.streamCallback(totalData, nil)
+			counter++
+		}
 	}
+	return totalData, nil
+}
 
-	req, err := http.NewRequest("POST", c.url, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
-
+func (c *OpenAIClient) callStream(payload Payload) (Message, error) {
+	req, err := c.createRequest(payload)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return Message{}, fmt.Errorf("failed to make the API request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != 200 {
 		return Message{}, fmt.Errorf("API request failed: %s", resp.Status)
 	}
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	var response Response
-	if err := json.Unmarshal(bodyBytes, &response); err != nil {
-		return Message{}, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if len(response.Choices) == 0 {
-		return Message{}, fmt.Errorf("no completions found in response")
-	}
-
-	return response.Choices[0].Message, nil
+	content, err := c.processStream(resp)
+	return Message{Role: "assistant", Content: content}, nil
 }
