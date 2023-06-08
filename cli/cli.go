@@ -1,8 +1,9 @@
-package main
+package cli
 
 import (
 	"fmt"
 	"os"
+	"q/openai"
 	"strings"
 	"time"
 
@@ -25,7 +26,7 @@ const (
 )
 
 type model struct {
-	client           *OpenAIClient
+	client           *openai.OpenAIClient
 	markdownRenderer *glamour.TermRenderer
 	p                *tea.Program
 
@@ -61,7 +62,7 @@ type setPMsg struct{ p *tea.Program }
 
 // === Commands === //
 
-func makeQuery(client *OpenAIClient, query string) tea.Cmd {
+func makeQuery(client *openai.OpenAIClient, query string) tea.Cmd {
 	return func() tea.Msg {
 		response, err := client.Query(query)
 		return responseMsg{response: response, err: err}
@@ -252,7 +253,7 @@ func (m model) View() string {
 
 // === Initial Model Setup === //
 
-func initialModel(prompt string, client *OpenAIClient) model {
+func initialModel(prompt string, client *openai.OpenAIClient) model {
 	maxWidth := 100
 
 	ti := textinput.New()
@@ -316,7 +317,7 @@ func streamHandler(p *tea.Program) func(content string, err error) {
 	}
 }
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -328,18 +329,12 @@ var rootCmd = &cobra.Command{
 			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
-		c := NewClient(apiKey, modelOverride)
+		c := openai.NewClient(apiKey, modelOverride)
 		p := tea.NewProgram(initialModel(prompt, c))
-		c.streamCallback = streamHandler(p)
+		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Alas, there's been an error: %v", err)
 			os.Exit(1)
 		}
 	},
-}
-
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		panic(err)
-	}
 }

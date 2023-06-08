@@ -1,4 +1,4 @@
-package main
+package openai
 
 import (
 	"bufio"
@@ -69,7 +69,7 @@ type OpenAIClient struct {
 
 	messages []Message
 
-	streamCallback func(string, error)
+	StreamCallback func(string, error)
 
 	httpClient *http.Client
 }
@@ -178,7 +178,7 @@ func (c *OpenAIClient) processStream(resp *http.Response) (string, error) {
 				continue
 			}
 			totalData += content
-			c.streamCallback(totalData, nil)
+			c.StreamCallback(totalData, nil)
 			counter++
 		}
 	}
