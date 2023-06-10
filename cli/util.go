@@ -1,6 +1,8 @@
 package cli
 
-import "strings"
+import (
+	"strings"
+)
 
 func startsWithCodeBlock(s string) bool {
 	if len(s) <= 3 {
@@ -9,16 +11,20 @@ func startsWithCodeBlock(s string) bool {
 	return strings.HasPrefix(s, "```")
 }
 
-func extractFirstCodeBlock(s string) string {
+func extractFirstCodeBlock(s string) (content string, isOnlyCode bool) {
+	isOnlyCode = true
 	if len(s) <= 3 {
-		return ""
+		return "", false
 	}
 	start := strings.Index(s, "```")
 	if start == -1 {
-		return ""
+		return "", false
+	}
+	if start != 0 {
+		isOnlyCode = false
 	}
 	fromStart := s[start:]
-	content := strings.TrimPrefix(fromStart, "```")
+	content = strings.TrimPrefix(fromStart, "```")
 	// Find newline after the first ```
 	newlinePos := strings.Index(content, "\n")
 	if newlinePos != -1 {
@@ -30,15 +36,18 @@ func extractFirstCodeBlock(s string) string {
 	}
 	// Strip final ``` if present
 	end := strings.Index(content, "```")
+	if end < len(content)-3 {
+		isOnlyCode = false
+	}
 	if end != -1 {
 		content = content[:end]
 	}
 	if len(content) == 0 {
-		return ""
+		return "", false
 	}
 	// Strip the final newline, if present
 	if content[len(content)-1] == '\n' {
 		content = content[:len(content)-1]
 	}
-	return content
+	return
 }

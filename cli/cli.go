@@ -36,6 +36,7 @@ type model struct {
 	state                 State
 	query                 string
 	latestCommandResponse string
+	latestCommandIsCode   bool
 
 	partialResponse          string
 	formattedPartialResponse string
@@ -142,21 +143,20 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// parse out the code block
-	code := extractFirstCodeBlock(msg.response)
-	if code == "" {
-		m.latestCommandResponse = code
+	content, isOnlyCode := extractFirstCodeBlock(msg.response)
+	if content != "" {
+		m.latestCommandResponse = content
 	}
 
-	isCode := startsWithCodeBlock(msg.response)
-	formatted, err := m.formatResponse(msg.response, isCode)
+	formatted, err := m.formatResponse(msg.response, startsWithCodeBlock(msg.response))
 	if err != nil {
 		// TODO: handle error
 		panic(err)
 	}
 
 	m.state = RecevingInput
-	m.latestCommandResponse = code
 	m.drawBuffer = formatted
+	m.latestCommandIsCode = isOnlyCode
 	return m, tea.Sequence(drawOutputCommand, textinput.Blink)
 }
 
@@ -235,7 +235,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	if m.state == Copying {
 		placeholderStyle := lipgloss.NewStyle().Faint(true)
-		return placeholderStyle.Render("Copied to clipboard.\n")
+		message := "Copied to clipboard.\n"
+		if !m.latestCommandIsCode {
+			message = "Copied only code to clipboard.\n"
+		}
+		return placeholderStyle.Render(message)
 	}
 	if m.drawBuffer != "" {
 		return ""
@@ -278,6 +282,7 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 		state:                 RecevingInput,
 		query:                 "",
 		latestCommandResponse: "",
+		latestCommandIsCode:   false,
 		drawBuffer:            "",
 		maxWidth:              maxWidth,
 		runWithArgs:           false,
