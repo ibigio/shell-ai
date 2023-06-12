@@ -122,7 +122,6 @@ func (m model) formatResponse(response string, isCode bool) (string, error) {
 }
 
 func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
-	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, CTRL+C to quit"
 	m.formattedPartialResponse = ""
 
 	// really shitty error handling but it's better than nothing
@@ -147,6 +146,14 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	if err != nil {
 		// TODO: handle error
 		panic(err)
+	}
+
+	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, CTRL+C to quit"
+	if !isOnlyCode {
+		m.textInput.Placeholder = "Follow up, ENTER to copy (code only), CTRL+C to quit"
+	}
+	if m.latestCommandResponse == "" {
+		m.textInput.Placeholder = "Follow up, ENTER or CTRL+C to quit"
 	}
 
 	m.state = RecevingInput
