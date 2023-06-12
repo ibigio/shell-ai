@@ -5,7 +5,6 @@ import (
 	"os"
 	"q/openai"
 	"strings"
-	"time"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -22,7 +21,6 @@ const (
 	Loading State = iota
 	RecevingInput
 	ReceivingResponse
-	Copying
 )
 
 type model struct {
@@ -41,8 +39,7 @@ type model struct {
 	partialResponse          string
 	formattedPartialResponse string
 
-	drawBuffer string
-	maxWidth   int
+	maxWidth int
 
 	runWithArgs bool
 	err         error
@@ -54,7 +51,6 @@ type responseMsg struct {
 	err      error
 }
 type queryMsg struct{}
-type drawOutputMsg struct{}
 type partialResponseMsg struct {
 	content string
 	err     error
@@ -68,13 +64,6 @@ func makeQuery(client *openai.OpenAIClient, query string) tea.Cmd {
 		response, err := client.Query(query)
 		return responseMsg{response: response, err: err}
 	}
-}
-
-func drawOutputCommand() tea.Msg {
-	// wait for the screen to clear
-	// (this is kind of hacky but it works)
-	time.Sleep(50 * time.Millisecond)
-	return drawOutputMsg{}
 }
 
 // === Msg Handlers === //
@@ -95,16 +84,21 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 			fmt.Println("Failed to copy text to clipboard:", err)
 			return m, tea.Quit
 		}
-		m.state = Copying
-		return m, tea.Quit
+		placeholderStyle := lipgloss.NewStyle().Faint(true)
+		message := "Copied to clipboard."
+		if !m.latestCommandIsCode {
+			message = "Copied only code to clipboard."
+		}
+		message = placeholderStyle.Render(message)
+		return m, tea.Sequence(tea.Printf(message), tea.Quit)
 	}
 	// Input, run query.
 	m.textInput.SetValue("")
 	m.query = v
 	m.state = Loading
 	placeholderStyle := lipgloss.NewStyle().Faint(true)
-	m.drawBuffer = placeholderStyle.Render(fmt.Sprintf("> %s\n", v))
-	return m, tea.Sequence(drawOutputCommand, tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
+	message := placeholderStyle.Render(fmt.Sprintf("> %s", v))
+	return m, tea.Sequence(tea.Printf(message), tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
 }
 
 func (m model) formatResponse(response string, isCode bool) (string, error) {
@@ -116,8 +110,9 @@ func (m model) formatResponse(response string, isCode bool) (string, error) {
 		panic(err)
 	}
 
-	// trim trailing newlines
+	// trim preceding and trailing newlines
 	formatted = strings.TrimPrefix(formatted, "\n")
+	formatted = strings.TrimSuffix(formatted, "\n")
 
 	// Add newline for non-code blocks (hacky)
 	if !isCode {
@@ -136,10 +131,10 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 		styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 		styleDim := lipgloss.NewStyle().Faint(true)
 
-		m.drawBuffer = fmt.Sprintf("\n  %v\n\n  %v\n\n",
+		message := fmt.Sprintf("\n  %v\n\n  %v\n",
 			styleRed.Render("Error: Failed to connect to OpenAI."),
 			styleDim.Render(msg.err.Error()))
-		return m, tea.Sequence(drawOutputCommand, textinput.Blink)
+		return m, tea.Sequence(tea.Printf(message), textinput.Blink)
 	}
 
 	// parse out the code block
@@ -155,9 +150,9 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.state = RecevingInput
-	m.drawBuffer = formatted
 	m.latestCommandIsCode = isOnlyCode
-	return m, tea.Sequence(drawOutputCommand, textinput.Blink)
+	message := formatted
+	return m, tea.Sequence(tea.Printf(message), textinput.Blink)
 }
 
 func (m model) handlePartialResponseMsg(msg partialResponseMsg) (tea.Model, tea.Cmd) {
@@ -169,15 +164,6 @@ func (m model) handlePartialResponseMsg(msg partialResponseMsg) (tea.Model, tea.
 		panic(err)
 	}
 	m.formattedPartialResponse = formatted
-	return m, nil
-}
-
-func (m model) handleDrawOutputMsg() (tea.Model, tea.Cmd) {
-	if m.drawBuffer != "" {
-		fmt.Printf("%s", m.drawBuffer)
-
-	}
-	m.drawBuffer = ""
 	return m, nil
 }
 
@@ -202,9 +188,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			return m.handleKeyEnter()
 		}
-
-	case drawOutputMsg:
-		return m.handleDrawOutputMsg()
 
 	case responseMsg:
 		return m.handleResponseMsg(msg)
@@ -233,24 +216,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	if m.state == Copying {
-		placeholderStyle := lipgloss.NewStyle().Faint(true)
-		message := "Copied to clipboard.\n"
-		if !m.latestCommandIsCode {
-			message = "Copied only code to clipboard.\n"
-		}
-		return placeholderStyle.Render(message)
-	}
-	if m.drawBuffer != "" {
-		return ""
-	}
 	switch m.state {
 	case Loading:
 		return m.spinner.View()
 	case RecevingInput:
 		return m.textInput.View()
 	case ReceivingResponse:
-		return m.formattedPartialResponse
+		return m.formattedPartialResponse + "\n"
 	}
 	return ""
 }
@@ -283,7 +255,6 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 		query:                 "",
 		latestCommandResponse: "",
 		latestCommandIsCode:   false,
-		drawBuffer:            "",
 		maxWidth:              maxWidth,
 		runWithArgs:           false,
 		err:                   nil,
