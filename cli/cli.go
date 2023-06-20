@@ -90,7 +90,7 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 			message = "Copied only code to clipboard."
 		}
 		message = placeholderStyle.Render(message)
-		return m, tea.Sequence(tea.Printf(message), tea.Quit)
+		return m, tea.Sequence(tea.Printf("%s", message), tea.Quit)
 	}
 	// Input, run query.
 	m.textInput.SetValue("")
@@ -98,7 +98,7 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 	m.state = Loading
 	placeholderStyle := lipgloss.NewStyle().Faint(true)
 	message := placeholderStyle.Render(fmt.Sprintf("> %s", v))
-	return m, tea.Sequence(tea.Printf(message), tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
+	return m, tea.Sequence(tea.Printf("%s", message), tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
 }
 
 func (m model) formatResponse(response string, isCode bool) (string, error) {
@@ -133,7 +133,7 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 		message := fmt.Sprintf("\n  %v\n\n  %v\n",
 			styleRed.Render("Error: Failed to connect to OpenAI."),
 			styleDim.Render(msg.err.Error()))
-		return m, tea.Sequence(tea.Printf(message), textinput.Blink)
+		return m, tea.Sequence(tea.Printf("%s", message), textinput.Blink)
 	}
 
 	// parse out the code block
@@ -159,7 +159,7 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	m.state = RecevingInput
 	m.latestCommandIsCode = isOnlyCode
 	message := formatted
-	return m, tea.Sequence(tea.Printf(message), textinput.Blink)
+	return m, tea.Sequence(tea.Printf("%s", message), textinput.Blink)
 }
 
 func (m model) handlePartialResponseMsg(msg partialResponseMsg) (tea.Model, tea.Cmd) {
