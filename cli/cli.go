@@ -96,7 +96,7 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 	m.textInput.SetValue("")
 	m.query = v
 	m.state = Loading
-	placeholderStyle := lipgloss.NewStyle().Faint(true)
+	placeholderStyle := lipgloss.NewStyle().Faint(true).Width(m.maxWidth)
 	message := placeholderStyle.Render(fmt.Sprintf("> %s", v))
 	return m, tea.Sequence(tea.Printf("%s", message), tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
 }
@@ -128,9 +128,8 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	if msg.err != nil {
 		m.state = RecevingInput
 		styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-		styleDim := lipgloss.NewStyle().Faint(true)
-
-		message := fmt.Sprintf("\n  %v\n\n  %v\n",
+		styleDim := lipgloss.NewStyle().Faint(true).Width(m.maxWidth).PaddingLeft(2)
+		message := fmt.Sprintf("\n  %v\n\n%v\n",
 			styleRed.Render("Error: Failed to connect to OpenAI."),
 			styleDim.Render(msg.err.Error()))
 		return m, tea.Sequence(tea.Printf("%s", message), textinput.Blink)
@@ -242,7 +241,7 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 	ti := textinput.New()
 	ti.Placeholder = "Describe a shell command, or ask a question."
 	ti.Focus()
-	ti.CharLimit = maxWidth
+	ti.Width = maxWidth
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
