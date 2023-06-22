@@ -1,7 +1,7 @@
 # ShellAI
 A delightfully minimal, yet remarkably powerful AI Shell Assistant.
 
-![2023-06-08 00 31 26](https://github.com/ibigio/shell-ai/assets/25421602/88a4aed3-4235-461a-ae1b-0a47c32d193b)
+![shell-ai-demo](https://github.com/ibigio/shell-ai/assets/25421602/f480db5d-3787-49d8-b1bc-a027f65858e6)
 
 >
 > "Ten minutes of Googling is now ten seconds in the terminal."
@@ -37,7 +37,7 @@ Type `q` followed by a description of a shell command you want to write!
 Nice for beginners...
 ```
 $ q make a new git branch
-git checkout -b "new-branch"
+git branch <branch-name>
 ```
 
 ...and those who forget how to use `find`, like me.
