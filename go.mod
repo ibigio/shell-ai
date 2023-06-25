@@ -8,6 +8,6 @@ require (
 	github.com/charmbracelet/bubbletea v0.24.0
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/charmbracelet/lipgloss v0.6.0
-	github.com/r3labs/sse v0.0.0-20210224172625-26fe804710bc
 	github.com/spf13/cobra v1.7.0
+	golang.org/x/sys v0.6.0
 )

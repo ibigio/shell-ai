@@ -237,6 +237,12 @@ func (m model) View() string {
 
 func initialModel(prompt string, client *openai.OpenAIClient) model {
 	maxWidth := 100
+	termSafeZonePadding := 10 // 10 works *shrug*
+
+	termWidth, err := getTermWidth()
+	if err != nil || termWidth < maxWidth {
+		maxWidth = termWidth - termSafeZonePadding
+	}
 
 	ti := textinput.New()
 	ti.Placeholder = "Describe a shell command, or ask a question."
@@ -251,6 +257,7 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(int(maxWidth)),
 	)
 	model := model{
 		client:                client,

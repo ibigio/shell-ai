@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"os"
 	"strings"
+
+	"golang.org/x/sys/unix"
 )
 
 func startsWithCodeBlock(s string) bool {
@@ -50,4 +53,9 @@ func extractFirstCodeBlock(s string) (content string, isOnlyCode bool) {
 		content = content[:len(content)-1]
 	}
 	return
+}
+
+func getTermWidth() (width int, err error) {
+	ws, err := unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
+	return int(ws.Col), err
 }
