@@ -121,17 +121,34 @@ func (m model) formatResponse(response string, isCode bool) (string, error) {
 	return formatted, nil
 }
 
+func (m model) getConnectionError(err error) string {
+	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	styleGreen := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	styleDim := lipgloss.NewStyle().Faint(true).Width(m.maxWidth).PaddingLeft(2)
+	if isLikelyBillingError(err.Error()) {
+	}
+	message := fmt.Sprintf("\n  %v\n\n%v\n",
+		styleRed.Render("Error: Failed to connect to OpenAI."),
+		styleDim.Render(err.Error()))
+	if isLikelyBillingError(err.Error()) {
+		message = fmt.Sprintf("%v\n  %v %v\n\n  %v%v\n\n",
+			message,
+			styleGreen.Render("Hint:"),
+			"You may need to set up billing. You can do so here:",
+			styleGreen.Render("->"),
+			styleDim.Render("https://platform.openai.com/account/billing"),
+		)
+	}
+	return message
+}
+
 func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	m.formattedPartialResponse = ""
 
-	// really shitty error handling but it's better than nothing
+	// error handling
 	if msg.err != nil {
 		m.state = RecevingInput
-		styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-		styleDim := lipgloss.NewStyle().Faint(true).Width(m.maxWidth).PaddingLeft(2)
-		message := fmt.Sprintf("\n  %v\n\n%v\n",
-			styleRed.Render("Error: Failed to connect to OpenAI."),
-			styleDim.Render(msg.err.Error()))
+		message := m.getConnectionError(msg.err)
 		return m, tea.Sequence(tea.Printf("%s", message), textinput.Blink)
 	}
 

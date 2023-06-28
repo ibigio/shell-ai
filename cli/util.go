@@ -63,3 +63,7 @@ func getTermWidth() (width int, err error) {
 	width, _, err = t.Size()
 	return width, err
 }
+
+func isLikelyBillingError(s string) bool {
+	return strings.Contains(s, "429 Too Many Requests")
+}
