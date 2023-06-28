@@ -1,10 +1,9 @@
 package cli
 
 import (
-	"os"
 	"strings"
 
-	"golang.org/x/sys/unix"
+	"github.com/mattn/go-tty"
 )
 
 func startsWithCodeBlock(s string) bool {
@@ -56,6 +55,11 @@ func extractFirstCodeBlock(s string) (content string, isOnlyCode bool) {
 }
 
 func getTermWidth() (width int, err error) {
-	ws, err := unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
-	return int(ws.Col), err
+	t, err := tty.Open()
+	if err != nil {
+		return 0, err
+	}
+	defer t.Close()
+	width, _, err = t.Size()
+	return width, err
 }
