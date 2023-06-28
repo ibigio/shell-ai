@@ -173,6 +173,9 @@ func (c *OpenAIClient) processStream(resp *http.Response) (string, error) {
 				fmt.Println("Error parsing data:", err)
 				continue
 			}
+			if len(responseData.Choices) == 0 {
+				continue
+			}
 			content := responseData.Choices[0].Delta.Content
 			if counter < 2 && strings.Count(content, "\n") > 0 {
 				continue
