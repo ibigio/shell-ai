@@ -311,8 +311,8 @@ func printAPIKeyNotSetMessage() {
 	msg2, _ := r.Render(`
 	1. Generate your API key at https://platform.openai.com/account/api-keys
 	2. Add your credit card in the API (for the free trial)
-	2. Set your key by running:
-	` + "\n```bash\nexport OPENAPI_API_KEY=[your key]\n```")
+	3. Set your key by running:
+	` + "\n```bash\nexport OPENAI_API_KEY=[your key]\n```\n" + "    4. (Recommended) Add that ^ line to your .zshrc or .bashrc file.\n")
 
 	fmt.Printf("\n  %v%v", msg1, msg2)
 }
