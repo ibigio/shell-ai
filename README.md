@@ -17,7 +17,7 @@ For developers, referencing things online is inevitable – but one can only lo
 
 **ShellAI** is meant to be a faster and smarter alternative to online reference: for shell commands, code examples, error outputs, and high-level explanations. We believe tools should be beautiful, minimal, and convenient, to let you get back to what you were doing as quickly and pleasantly as possible. That is the purpose of ShellAI.
 
-# Install
+## Install
 
 ### Homebrew
 
@@ -32,11 +32,11 @@ brew install shell-ai
 curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
 ```
 
-# Usage
+## Usage
 
 Type `q` followed by a description of a shell command, code snippet, or general question!
 
-## Features
+### Features
 - Generate shell commands from a description.
 - Reference code snippets for any programming language.
 - Fast, syntax-highlighted, minimal UI.
@@ -45,8 +45,21 @@ Type `q` followed by a description of a shell command, code snippet, or general 
 - Concise, helpful responses.
 - Tailored support for GPT 3.5 and GPT 4.
 
+### Settings
+
+Set your [OpenAI API key](https://platform.openai.com/account/api-keys).
+```bash
+export OPENAI_API_KEY=[your key]
+```
+
+Select between GPT 3.5 (default, faster) and GPT 4 (smarter).
+
+```bash
+export OPENAI_MODEL_OVERRIDE="gpt-4"
+```
+
 ## Examples
-#### Shell Commands
+### Shell Commands
 `$ q make a new git branch`
 ```
 git branch new-branch
@@ -55,7 +68,7 @@ git branch new-branch
 ```
 find /path/to/directory -type f -name "*administrative*"
 ```
-#### Code Snippets
+### Code Snippets
 `$ q initialize a static map in golang`
 ```golang
 var staticMap = map[string]int{
@@ -73,19 +86,6 @@ def date_generator(start_date, end_date):
         current_date += datetime.timedelta(days=1)
 ```
 
-## Settings
-
-Set your [OpenAI API key](https://platform.openai.com/account/api-keys).
-```bash
-export OPENAI_API_KEY=[your key]
-```
-
-Select between GPT 3.5 (default, faster) and GPT 4 (smarter).
-
-```bash
-export OPENAI_MODEL_OVERRIDE="gpt-4"
-```
-
-# Contributing
+## Contributing
 
 ShellAI is polished but by no means finished, feel free to open issues or pull requests on the repo! If you have other ideas or just want to say hi, go ahead and reach out!
