@@ -98,3 +98,5 @@ def date_generator(start_date, end_date):
 # Contributing
 
 ShellAI is polished but by no means finished, feel free to open issues or pull requests on the repo! If you have other ideas or just want to say hi, go ahead and reach out!
+
+Also I'll be adding support for OSS models in the coming weeks, adding your own is now easier! Give it a shot in `~/.shell-ai/config.yaml`. DM for questions [@ilanbigio](https://twitter.com/ilanbigio) :)
