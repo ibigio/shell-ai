@@ -1,3 +1,5 @@
+<img width="1280" alt="Frame 7" src="https://github.com/ibigio/shell-ai/assets/25421602/8bbb4ed9-99e3-42df-9a79-dc101dc693ad">
+
 # ShellAI
 A delightfully minimal, yet remarkably powerful AI Shell Assistant.
 
@@ -9,67 +11,81 @@ A delightfully minimal, yet remarkably powerful AI Shell Assistant.
 >   ~ Joe C.
 >
 
-## Install
+## About
+
+For developers, referencing things online is inevitable – but one can only look up "how to do [X] in git" so many times before losing your mind.
+
+**ShellAI** is meant to be a faster and smarter alternative to online reference: for shell commands, code examples, error outputs, and high-level explanations. We believe tools should be beautiful, minimal, and convenient, to let you get back to what you were doing as quickly and pleasantly as possible. That is the purpose of ShellAI.
+
+# Install
+
+### Homebrew
 
 ```bash
 brew tap ibigio/tap
 brew install shell-ai
 ```
 
-or
+### Linux
 
 ```bash
 curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
 ```
 
-and set your OPENAI key ([get one here](https://platform.openai.com/account/api-keys)) like so:
+# Usage
 
+Type `q` followed by a description of a shell command, code snippet, or general question!
+
+## Features
+- Generate shell commands from a description.
+- Reference code snippets for any programming language.
+- Fast, syntax-highlighted, minimal UI.
+- Auto-extract code from response and copy to clipboard.
+- Follow up to refine command or explanation.
+- Concise, helpful responses.
+- Tailored support for GPT 3.5 and GPT 4.
+
+## Examples
+#### Shell Commands
+`$ q make a new git branch`
+```
+git branch new-branch
+```
+`$ q find files that contain "administrative" in the name`
+```
+find /path/to/directory -type f -name "*administrative*"
+```
+#### Code Snippets
+`$ q initialize a static map in golang`
+```golang
+var staticMap = map[string]int{
+    "key1": 1,
+    "key2": 2,
+    "key3": 3,
+}
+```
+`$ q create a generator function in python for dates`
+```python
+def date_generator(start_date, end_date):
+    current_date = start_date
+    while current_date <= end_date:
+        yield current_date
+        current_date += datetime.timedelta(days=1)
+```
+
+## Settings
+
+Set your [OpenAI API key](https://platform.openai.com/account/api-keys).
 ```bash
 export OPENAI_API_KEY=[your key]
 ```
 
-(Don't forget to set up billing with OpenAI.)
-
-## Usage
-
-Type `q` followed by a description of a shell command you want to write!
-
-Nice for beginners...
-```
-$ q make a new git branch
-git branch <branch-name>
-```
-
-...and those who forget how to use `find`, like me.
-```
-$ q find files that contain "administrative" in the name
-find . -name "*administrative*"
-```
-
-
-<details>
-<summary>I want even more power.</summary>
-<br>
-By default this tool uses the `gpt-3.5-turbo` model, but if you want to use `gpt-4` you can override like so:
+Select between GPT 3.5 (default, faster) and GPT 4 (smarter).
 
 ```bash
 export OPENAI_MODEL_OVERRIDE="gpt-4"
 ```
-</details>
 
+# Contributing
 
-## More Sample Use Cases
-```
-$ q print my local ip formatted like so "ip: [ip]" for mac
-ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print "ip: " $2}'
-```
-```
-$ q how do i set up a new nextjs project
-To set up a new Next.js project, first make sure you have Node.js installed. Then, run the following command in your terminal:
-
-npx create-next-app your-project-name
-```
-```
-$ q what is the meaning of life
-42
-```
+ShellAI is polished but by no means finished, feel free to open issues or pull requests on the repo! If you have other ideas or just want to say hi, go ahead and reach out!
