@@ -16,7 +16,7 @@ For developers, referencing things online is inevitable – but one can only lo
 
 **ShellAI** is meant to be a faster and smarter alternative to online reference: for shell commands, code examples, error outputs, and high-level explanations. We believe tools should be beautiful, minimal, and convenient, to let you get back to what you were doing as quickly and pleasantly as possible. That is the purpose of ShellAI.
 
-# Install
+## Install
 
 ### Homebrew
 
@@ -31,7 +31,7 @@ brew install shell-ai
 curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
 ```
 
-# Usage
+## Usage
 
 Type `q` followed by a description of a shell command, code snippet, or general question!
 
