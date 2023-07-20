@@ -11,13 +11,13 @@ A delightfully minimal, yet remarkably powerful AI Shell Assistant.
 >   ~ Joe C.
 >
 
-## About
+# About
 
 For developers, referencing things online is inevitable – but one can only look up "how to do [X] in git" so many times before losing your mind.
 
 **ShellAI** is meant to be a faster and smarter alternative to online reference: for shell commands, code examples, error outputs, and high-level explanations. We believe tools should be beautiful, minimal, and convenient, to let you get back to what you were doing as quickly and pleasantly as possible. That is the purpose of ShellAI.
 
-## Install
+# Install
 
 ### Homebrew
 
@@ -32,7 +32,7 @@ brew install shell-ai
 curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
 ```
 
-## Usage
+# Usage
 
 Type `q` followed by a description of a shell command, code snippet, or general question!
 
@@ -58,7 +58,7 @@ Select between GPT 3.5 (default, faster) and GPT 4 (smarter).
 export OPENAI_MODEL_OVERRIDE="gpt-4"
 ```
 
-## Examples
+# Examples
 ### Shell Commands
 `$ q make a new git branch`
 ```
@@ -86,6 +86,6 @@ def date_generator(start_date, end_date):
         current_date += datetime.timedelta(days=1)
 ```
 
-## Contributing
+# Contributing
 
 ShellAI is polished but by no means finished, feel free to open issues or pull requests on the repo! If you have other ideas or just want to say hi, go ahead and reach out!
