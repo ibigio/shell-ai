@@ -63,6 +63,7 @@ type ResponseData struct {
 
 type OpenAIClient struct {
 	apiKey    string
+	orgKey    string
 	url       string
 	model     string
 	maxTokens int
@@ -98,7 +99,7 @@ func promptForModel(model string) []Message {
 	}
 }
 
-func NewClient(apiKey string, modelOverride string) *OpenAIClient {
+func NewClient(apiKey string, orgKey string, modelOverride string) *OpenAIClient {
 	model := "gpt-3.5-turbo"
 	if modelOverride != "" {
 		model = modelOverride
@@ -106,6 +107,7 @@ func NewClient(apiKey string, modelOverride string) *OpenAIClient {
 
 	return &OpenAIClient{
 		apiKey:    apiKey,
+		orgKey:    orgKey,
 		url:       "https://api.openai.com/v1/chat/completions",
 		model:     model,
 		maxTokens: 256,
@@ -128,6 +130,9 @@ func (c *OpenAIClient) createRequest(payload Payload) (*http.Request, error) {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	if c.orgKey != "" {
+		req.Header.Set("OpenAI-Organization", c.orgKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	return req, nil
 }
