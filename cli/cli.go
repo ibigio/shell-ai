@@ -7,6 +7,7 @@ import (
 	"q/llm"
 	. "q/types"
 
+	"runtime"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -299,6 +300,20 @@ func initialModel(prompt string, client *llm.LLMClient) model {
 
 // === Main === //
 
+func getShellSyntax() string {
+	if runtime.GOOS == "windows" {
+		return "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
+	}
+	return "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
+}
+
+func getProfileScriptName() string {
+	if runtime.GOOS == "windows" {
+		return "$profile"
+	}
+	return ".zshrc or .bashrc"
+}
+
 func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 	auth := modelConfig.Auth
 	r, _ := glamour.NewTermRenderer(
@@ -310,11 +325,17 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 	switch auth {
 	case "OPENAI_API_KEY":
 		msg1 := styleRed.Render("OPENAI_API_KEY environment variable not set.")
-		msg2, _ := r.Render(`
+
+		// make it platform agnostic
+		message_string := fmt.Sprintf(`
 		1. Generate your API key at https://platform.openai.com/account/api-keys
 		2. Add your credit card in the API (for the free trial)
 		3. Set your key by running:
-		` + "\n```bash\nexport OPENAI_API_KEY=[your key]\n```\n" + "    4. (Recommended) Add that ^ line to your .zshrc or .bashrc file.\n")
+		%s
+	4. (Recommended) Add that ^ line to your %s file(s).
+	5. If you are a member of an organization do the same thing but with OPENAI_ORGANIZATION_KEY`, getShellSyntax(), getProfileScriptName())
+
+		msg2, _ := r.Render(message_string)
 		fmt.Printf("\n  %v%v", msg1, msg2)
 	default:
 		msg := styleRed.Render(auth + " environment variable not set.")
