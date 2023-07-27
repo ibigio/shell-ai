@@ -329,13 +329,22 @@ var RootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
-		apiKey := os.Getenv("OPENAI_API_KEY")
+		config, _ := loadConfig()
+		apiKey := config.APIKey
+		model := config.Model
+		if apiKey == "" {
+			apiKey = os.Getenv("OPENAI_API_KEY")
+		}
 		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
+		if modelOverride != "" {
+			model = modelOverride
+		}
 		if apiKey == "" {
 			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
-		c := openai.NewClient(apiKey, modelOverride)
+
+		c := openai.NewClient(apiKey, model)
 		p := tea.NewProgram(initialModel(prompt, c))
 		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {
