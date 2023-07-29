@@ -320,6 +320,13 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 		glamour.WithAutoStyle(),
 	)
 
+	profileScriptName := ".zshrc or.bashrc"
+	shellSyntax := "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
+	if runtime.GOOS == "windows" {
+		profileScriptName = "$profile"
+		shellSyntax = "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
+	}
+
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 
 	switch auth {
@@ -333,7 +340,7 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 		3. Set your key by running:
 		%s
 	4. (Recommended) Add that ^ line to your %s file(s).
-	5. If you are a member of an organization do the same thing but with OPENAI_ORGANIZATION_KEY`, getShellSyntax(), getProfileScriptName())
+	5. If you are a member of an organization do the same thing but with OPENAI_ORGANIZATION_KEY`, shellSyntax, profileScriptName)
 
 		msg2, _ := r.Render(message_string)
 		fmt.Printf("\n  %v%v", msg1, msg2)
