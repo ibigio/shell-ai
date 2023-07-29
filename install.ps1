@@ -1,3 +1,23 @@
+param(
+    [string]$repoowner = "ibigio",
+    [string]$reponame = "shell-ai",
+    [string]$toolname = "shell-ai",
+    [string]$toolsymlink = "q",
+    [switch]$help
+)
+
+if ($help) {
+    Write-Host "shell-ai Installer Help!"
+    Write-Host " Usage: "
+    Write-Host "    shell-ai -help <Shows this message>"
+    Write-Host "    shell-ai -repoowner <Owner of the repo>"
+    Write-Host "    shell-ai -reponame <Set the repository name we will look for>"
+    Write-Host "    shell-ai -toolname <Set the name of the tool (inside the .zip build)>"
+    Write-Host "    shell-ai -toolsymlink <Set name of the local executable>"
+
+    exit 0
+}
+
 # if user isnt admin then quit
 function IsUserAdministrator {
     $user = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -9,14 +29,6 @@ if (-not (IsUserAdministrator)) {
     Write-Host "Please run as administrator"
     exit 1
 }
-
-
-
-# Replace these values with your tool's information:
-$REPO_OWNER = "ibigio"
-$REPO_NAME = "shell-ai"
-$TOOL_NAME = "shell-ai"
-$TOOL_SYMLINK = "q"
 
 # Detect the platform (architecture and OS)
 $ARCH = $null
@@ -36,23 +48,23 @@ if ($env:OS -notmatch "Windows") {
 }
 
 # Fetch the latest release tag from GitHub API
-$API_URL = "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases/latest"
+$API_URL = "https://api.github.com/repos/$repoowner/$reponame/releases/latest"
 $LATEST_TAG = (Invoke-RestMethod -Uri $API_URL).tag_name
 
 # Set the download URL based on the platform and latest release tag
-$DOWNLOAD_URL = "https://github.com/$REPO_OWNER/$REPO_NAME/releases/download/$LATEST_TAG/${TOOL_NAME}_${OS}_${ARCH}.zip"
+$DOWNLOAD_URL = "https://github.com/$repoowner/$reponame/releases/download/$LATEST_TAG/${toolname}_${OS}_${ARCH}.zip"
 
 Write-Host $DOWNLOAD_URL
 
 # Download the ZIP file
-Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile "${TOOL_NAME}.zip"
+Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile "${toolname}.zip"
 
 # Extract the ZIP file
-$extractedDir = "${TOOL_NAME}-temp"
-Expand-Archive -Path "${TOOL_NAME}.zip" -DestinationPath $extractedDir -Force
+$extractedDir = "${toolname}-temp"
+Expand-Archive -Path "${toolname}.zip" -DestinationPath $extractedDir -Force
 
 # check if the file already exists
-$toolPath = "C:\Program Files\shell-ai\${TOOL_SYMLINK}.exe"
+$toolPath = "C:\Program Files\shell-ai\${toolsymlink}.exe"
 if (Test-Path $toolPath) {
     Remove-Item $toolPath
 } else {
@@ -67,18 +79,18 @@ if (-not ($currentPath -split ";" | Select-String -SimpleMatch "C:\Program Files
     $updatedPath = $currentPath + ";" + "C:\Program Files\shell-ai\"
 
     # Set the updated PATH value
-    [System.Environment]::SetEnvironmentVariable("PATH", $updatedPath, "Machine")   # Use "User" instead of "Machine" for user-level PATH
+    [System.Environment]::SetEnvironmentVariable("PATH", $updatedPath, "User")   # Use "User" instead of "Machine" for user-level PATH
 
     Write-Host "The path has been added to the PATH variable. You may need to restart applications to see the changes." -ForegroundColor Red
 }
 
 # Make the binary executable
-Move-Item "${extractedDir}/${TOOL_NAME}.exe" $toolPath
+Move-Item "${extractedDir}/${toolname}.exe" $toolPath
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Unrestricted
 
 # Clean up
 Remove-Item -Recurse -Force "${extractedDir}"
-Remove-Item -Force "${TOOL_NAME}.zip"
+Remove-Item -Force "${toolname}.zip"
 
 # Print success message
-Write-Host "The $TOOL_NAME has been installed successfully (version: $LATEST_TAG)."
+Write-Host "The $toolname has been installed successfully (version: $LATEST_TAG)."

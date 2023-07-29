@@ -301,24 +301,17 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 
 // === Main === //
 
-func getShellSyntax() string {
-	if runtime.GOOS == "windows" {
-		return "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
-	}
-	return "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
-}
-
-func getProfileScriptName() string {
-	if runtime.GOOS == "windows" {
-		return "$profile"
-	}
-	return ".zshrc or .bashrc"
-}
-
 func printAPIKeyNotSetMessage() {
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 	)
+
+	profileScriptName := ".zshrc or.bashrc"
+	shellSyntax := "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
+	if runtime.GOOS == "windows" {
+		profileScriptName = "$profile"
+		shellSyntax = "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
+	}
 
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 
@@ -330,8 +323,7 @@ func printAPIKeyNotSetMessage() {
 	2. Add your credit card in the API (for the free trial)
 	3. Set your key by running:
 	%s
-	4. (Recommended) Add that ^ line to your %s file(s).
-	5. If you are a member of an organization do the same thing but with OPENAI_ORGANIZATION_KEY`, getShellSyntax(), getProfileScriptName())
+	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
 
 	msg2, _ := r.Render(message_string)
 
@@ -351,7 +343,7 @@ var RootCmd = &cobra.Command{
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
 		apiKey := os.Getenv("OPENAI_API_KEY")
-		// The organization key is optional ( just for us enterprise users :) )
+		// The organization key is optional ( just for enterprise users :) )
 		orgKey := os.Getenv("OPENAI_ORGANIZATION_KEY")
 		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
 		if apiKey == "" {
