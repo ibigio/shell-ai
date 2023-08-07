@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"q/openai"
+	"runtime"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -305,14 +306,26 @@ func printAPIKeyNotSetMessage() {
 		glamour.WithAutoStyle(),
 	)
 
+	profileScriptName := ".zshrc or.bashrc"
+	shellSyntax := "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
+	if runtime.GOOS == "windows" {
+		profileScriptName = "$profile"
+		shellSyntax = "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
+	}
+
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 
 	msg1 := styleRed.Render("OPENAI_API_KEY environment variable not set.")
-	msg2, _ := r.Render(`
+
+	// make it platform agnostic
+	message_string := fmt.Sprintf(`
 	1. Generate your API key at https://platform.openai.com/account/api-keys
 	2. Add your credit card in the API (for the free trial)
 	3. Set your key by running:
-	` + "\n```bash\nexport OPENAI_API_KEY=[your key]\n```\n" + "    4. (Recommended) Add that ^ line to your .zshrc or .bashrc file.\n")
+	%s
+	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
+
+	msg2, _ := r.Render(message_string)
 
 	fmt.Printf("\n  %v%v", msg1, msg2)
 }
@@ -330,12 +343,14 @@ var RootCmd = &cobra.Command{
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
 		apiKey := os.Getenv("OPENAI_API_KEY")
+		// The organization key is optional ( just for enterprise users :) )
+		orgKey := os.Getenv("OPENAI_ORGANIZATION_KEY")
 		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
 		if apiKey == "" {
 			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
-		c := openai.NewClient(apiKey, modelOverride)
+		c := openai.NewClient(apiKey, orgKey, modelOverride)
 		p := tea.NewProgram(initialModel(prompt, c))
 		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {
