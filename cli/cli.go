@@ -343,6 +343,11 @@ var RootCmd = &cobra.Command{
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
 		apiKey := os.Getenv("OPENAI_API_KEY")
+		// if OPENAI_API_URL environment variable is not set, default to "https://api.openai.com/v1/chat/completions"
+		apiUrl := os.Getenv("OPENAI_API_URL")
+		if apiUrl == "" {
+			apiUrl = "https://api.openai.com/v1/chat/completions"
+		}
 		// The organization key is optional ( just for enterprise users :) )
 		orgKey := os.Getenv("OPENAI_ORGANIZATION_KEY")
 		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
@@ -350,7 +355,7 @@ var RootCmd = &cobra.Command{
 			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
-		c := openai.NewClient(apiKey, orgKey, modelOverride)
+		c := openai.NewClient(apiUrl, apiKey, orgKey, modelOverride)
 		p := tea.NewProgram(initialModel(prompt, c))
 		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {

@@ -99,7 +99,7 @@ func promptForModel(model string) []Message {
 	}
 }
 
-func NewClient(apiKey string, orgKey string, modelOverride string) *OpenAIClient {
+func NewClient(apiUrl string,apiKey string, orgKey string, modelOverride string) *OpenAIClient {
 	model := "gpt-3.5-turbo"
 	if modelOverride != "" {
 		model = modelOverride
@@ -108,7 +108,8 @@ func NewClient(apiKey string, orgKey string, modelOverride string) *OpenAIClient
 	return &OpenAIClient{
 		apiKey:    apiKey,
 		orgKey:    orgKey,
-		url:       "https://api.openai.com/v1/chat/completions",
+		// default to "https://api.openai.com/v1/chat/completions",
+		url:       apiUrl,
 		model:     model,
 		maxTokens: 256,
 
