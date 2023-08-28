@@ -80,7 +80,8 @@ type SSEMessage struct {
 	isDone  bool
 }
 
-func promptForModel(model string) []Message {
+func promptForModel(model string, modelSystemPrompt string) []Message {
+
 	switch model {
 	case "gpt-4":
 		return []Message{
@@ -88,32 +89,40 @@ func promptForModel(model string) []Message {
 			{Role: "user", Content: "print hi"},
 			{Role: "assistant", Content: "```bash\necho \"hi\"\n```"},
 		}
+	case "gpt-3.5-turbo":
+		return []Message{
+			{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the question the users asks. Do not add explanations for your code. Do not output any non-code words at all. Just output the code. Short is better. However, if the user is clearly asking a general question then answer it very briefly and well."},
+			{Role: "user", Content: "get the current time from some website"},
+			{Role: "assistant", Content: "```bash\ncurl -s http://worldtimeapi.org/api/ip | jq '.datetime'\n```"},
+			{Role: "user", Content: "print hi"},
+			{Role: "assistant", Content: "```bash\necho \"hi\"\n```"},
+		}
 	}
-	// default for gpt-3.5-turbo
 	return []Message{
-		{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the question the users asks. Do not add explanations for your code. Do not output any non-code words at all. Just output the code. Short is better. However, if the user is clearly asking a general question then answer it very briefly and well."},
-		{Role: "user", Content: "get the current time from some website"},
-		{Role: "assistant", Content: "```bash\ncurl -s http://worldtimeapi.org/api/ip | jq '.datetime'\n```"},
-		{Role: "user", Content: "print hi"},
-		{Role: "assistant", Content: "```bash\necho \"hi\"\n```"},
+		{Role: "system", Content: modelSystemPrompt},
 	}
+	// //if the model in lowercase contains "llama" then return the llama prompt
+	// if(strings.Contains(strings.ToLower(model), "llama")){
+	// 	return []Message{
+	// 			{Role: "system", Content: "<<SYS>>You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well.<</SYS>>"},
+	// 		}
 }
 
-func NewClient(apiUrl string,apiKey string, orgKey string, modelOverride string) *OpenAIClient {
+func NewClient(apiUrl string, apiKey string, orgKey string, modelOverride string, modelSystemPrompt string) *OpenAIClient {
 	model := "gpt-3.5-turbo"
 	if modelOverride != "" {
 		model = modelOverride
 	}
 
 	return &OpenAIClient{
-		apiKey:    apiKey,
-		orgKey:    orgKey,
+		apiKey: apiKey,
+		orgKey: orgKey,
 		// default to "https://api.openai.com/v1/chat/completions",
 		url:       apiUrl,
 		model:     model,
 		maxTokens: 256,
 
-		messages: promptForModel(model),
+		messages: promptForModel(model, modelSystemPrompt),
 
 		httpClient: &http.Client{
 			Timeout: time.Second * 120,

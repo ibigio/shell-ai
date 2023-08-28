@@ -57,6 +57,32 @@ Select between GPT 3.5 (default, faster) and GPT 4 (smarter).
 ```bash
 export OPENAI_MODEL_OVERRIDE="gpt-4"
 ```
+### Using open source LLM models with LocalAI
+
+If you don't want to use OpenAI's API, you can use a local model instead. This is a great option if you want to use ShellAI offline, or if you want to use a model that you've trained yourself.
+
+To use a local model, you'll need to install [LocalAI](https://localai.io/).
+
+
+this is an example with LocalAI and [Llama-2-7B-Chat-GGML](https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGML).
+```bash
+# donwload the model and save it to the models directory
+mkdir models
+curl -L https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGML/resolve/main/llama-2-7b-chat.ggmlv3.q4_K_M.bin -o models/llama-2-7b-chat
+# add Prompt template: Llama-2-Chat
+echo "[INST]{{.Input}}[/INST]" >> models/llama-2-7b-chat.tmpl
+# run LocalAI
+docker run -p 8080:8080 -e DEBUG=true -v $PWD/models:/models -ti --rm quay.io/go-skynet/local-ai:latest --models-path /models --context-size 700 --threads 4 
+```
+set you environment variable
+```bash
+export OPENAI_API_KEY=not_required
+export OPENAI_API_URL=http://localhost:8080/chat/completions
+export OPENAI_MODEL_OVERRIDE=llama-2-7b-chat
+export OPENAI_MODEL_SYSTEM_PROMPT="<<SYS>>You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the question the users asks. Do not add explanations for your code. Do not output any non-code words at all. Just output the code. Short is better. However, if the user is clearly asking a general question then answer it very briefly and well.<</SYS>>"
+```
+Demo :
+![ShellAi+LocalAI](assets/shellai-localai.gif)
 
 # Examples
 ### Shell Commands

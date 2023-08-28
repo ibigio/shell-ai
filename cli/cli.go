@@ -351,11 +351,12 @@ var RootCmd = &cobra.Command{
 		// The organization key is optional ( just for enterprise users :) )
 		orgKey := os.Getenv("OPENAI_ORGANIZATION_KEY")
 		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
+		modelSystemPrompt := os.Getenv("OPENAI_MODEL_SYSTEM_PROMPT")
 		if apiKey == "" {
 			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
-		c := openai.NewClient(apiUrl, apiKey, orgKey, modelOverride)
+		c := openai.NewClient(apiUrl, apiKey, orgKey, modelOverride, modelSystemPrompt)
 		p := tea.NewProgram(initialModel(prompt, c))
 		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {
