@@ -3,7 +3,9 @@ package cli
 import (
 	"fmt"
 	"os"
+	"q/config"
 	"q/openai"
+
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -323,28 +325,41 @@ func streamHandler(p *tea.Program) func(content string, err error) {
 	}
 }
 
+func convertToOpenaiMessage(model_prompt []config.Message) []openai.Message {
+	openaiMessages := make([]openai.Message, len(model_prompt))
+	for i, msg := range model_prompt {
+		openaiMessages[i] = openai.Message(msg) // assuming Message can be converted to openai.Message
+	}
+	return openaiMessages
+}
+
 var RootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
 	Run: func(cmd *cobra.Command, args []string) {
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
-		config, _ := loadConfig()
-		apiKey := config.APIKey
-		model := config.Model
+		config, err := config.LoadConfig()
+		if err != nil {
+			panic(err)
+		}
+		apiKey := config.APIKeys["openai"]
+		model := config.Preferences.DefaultModel
+		model_prompt := config.Models[0].Prompt
+
 		if apiKey == "" {
 			apiKey = os.Getenv("OPENAI_API_KEY")
 		}
-		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
-		if modelOverride != "" {
-			model = modelOverride
-		}
+		// modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
+		// if modelOverride != "" {
+		// 	model = modelOverride
+		// }
 		if apiKey == "" {
 			printAPIKeyNotSetMessage()
 			os.Exit(1)
 		}
 
-		c := openai.NewClient(apiKey, model)
+		c := openai.NewClient(apiKey, model, "https://api.openai.com/v1/chat/completions", convertToOpenaiMessage(model_prompt))
 		p := tea.NewProgram(initialModel(prompt, c))
 		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {

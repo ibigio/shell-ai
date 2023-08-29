@@ -79,38 +79,14 @@ type SSEMessage struct {
 	isDone  bool
 }
 
-func promptForModel(model string) []Message {
-	switch model {
-	case "gpt-4":
-		return []Message{
-			{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well."},
-			{Role: "user", Content: "print hi"},
-			{Role: "assistant", Content: "```bash\necho \"hi\"\n```"},
-		}
-	}
-	// default for gpt-3.5-turbo
-	return []Message{
-		{Role: "system", Content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the question the users asks. Do not add explanations for your code. Do not output any non-code words at all. Just output the code. Short is better. However, if the user is clearly asking a general question then answer it very briefly and well."},
-		{Role: "user", Content: "get the current time from some website"},
-		{Role: "assistant", Content: "```bash\ncurl -s http://worldtimeapi.org/api/ip | jq '.datetime'\n```"},
-		{Role: "user", Content: "print hi"},
-		{Role: "assistant", Content: "```bash\necho \"hi\"\n```"},
-	}
-}
-
-func NewClient(apiKey string, modelOverride string) *OpenAIClient {
-	model := "gpt-3.5-turbo"
-	if modelOverride != "" {
-		model = modelOverride
-	}
-
+func NewClient(apiKey string, model string, url string, model_prompt []Message) *OpenAIClient {
 	return &OpenAIClient{
 		apiKey:    apiKey,
-		url:       "https://api.openai.com/v1/chat/completions",
+		url:       url,
 		model:     model,
 		maxTokens: 256,
 
-		messages: promptForModel(model),
+		messages: model_prompt,
 
 		httpClient: &http.Client{
 			Timeout: time.Second * 120,
