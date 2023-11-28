@@ -42,6 +42,7 @@ type model struct {
 
 	maxWidth int
 
+	silentMode  bool
 	runWithArgs bool
 	err         error
 }
@@ -77,21 +78,7 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 
 	// No input, copy and quit.
 	if v == "" {
-		if m.latestCommandResponse == "" {
-			return m, tea.Quit
-		}
-		err := clipboard.WriteAll(m.latestCommandResponse)
-		if err != nil {
-			fmt.Println("Failed to copy text to clipboard:", err)
-			return m, tea.Quit
-		}
-		placeholderStyle := lipgloss.NewStyle().Faint(true)
-		message := "Copied to clipboard."
-		if !m.latestCommandIsCode {
-			message = "Copied only code to clipboard."
-		}
-		message = placeholderStyle.Render(message)
-		return m, tea.Sequence(tea.Printf("%s", message), tea.Quit)
+		return m.copyAndQuit()
 	}
 	// Input, run query.
 	m.textInput.SetValue("")
@@ -100,6 +87,30 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 	placeholderStyle := lipgloss.NewStyle().Faint(true).Width(m.maxWidth)
 	message := placeholderStyle.Render(fmt.Sprintf("> %s", v))
 	return m, tea.Sequence(tea.Printf("%s", message), tea.Batch(m.spinner.Tick, makeQuery(m.client, m.query)))
+}
+
+func (m model) copyAndQuit() (tea.Model, tea.Cmd) {
+
+	if m.latestCommandResponse == "" {
+		return m, tea.Quit
+	}
+	err := clipboard.WriteAll(m.latestCommandResponse)
+	if err != nil {
+		fmt.Println("Failed to copy text to clipboard:", err)
+		return m, tea.Quit
+	}
+
+	if m.silentMode {
+		return m, tea.Quit
+	}
+
+	placeholderStyle := lipgloss.NewStyle().Faint(true)
+	message := "Copied to clipboard."
+	if !m.latestCommandIsCode {
+		message = "Copied only code to clipboard."
+	}
+	message = placeholderStyle.Render(message)
+	return m, tea.Sequence(tea.Printf("%s", message), tea.Quit)
 }
 
 func (m model) formatResponse(response string, isCode bool) (string, error) {
@@ -163,6 +174,12 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	if err != nil {
 		// TODO: handle error
 		panic(err)
+	}
+
+	if m.silentMode {
+		m.state = RecevingInput
+		m.latestCommandIsCode = isOnlyCode
+		return m.copyAndQuit()
 	}
 
 	m.textInput.Placeholder = "Follow up, ENTER to copy & quit, CTRL+C to quit"
@@ -272,6 +289,7 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	runWithArgs := prompt != ""
+	shellMode := os.Getenv("SHELLAI_MODE")
 
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
@@ -288,6 +306,7 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 		latestCommandIsCode:   false,
 		maxWidth:              maxWidth,
 		runWithArgs:           false,
+		silentMode:            shellMode == "silent",
 		err:                   nil,
 	}
 
