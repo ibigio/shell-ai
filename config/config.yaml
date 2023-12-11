@@ -1,13 +1,10 @@
-api_keys:
-  open_ai: ""
-
 preferences:
-  default_model: gpt-3.5-turbo
+  default_model: gpt-4
 
 models:
   - name: gpt-4
     endpoint: https://api.openai.com/v1/chat/completions
-    api_key: openai
+    auth: OPENAI_API_KEY
     prompt:
       [
         {
@@ -20,7 +17,7 @@ models:
 
   - name: gpt-3.5-turbo
     endpoint: https://api.openai.com/v1/chat/completions
-    api_key: openai
+    auth: OPENAI_API_KEY
     prompt:
       [
         {
@@ -35,3 +32,5 @@ models:
         { role: "user", content: "print hi" },
         { role: "assistant", content: "```bash\necho \"hi\"\n```" },
       ]
+
+config_format_version: "1"
