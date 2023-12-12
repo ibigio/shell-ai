@@ -3,7 +3,10 @@ package cli
 import (
 	"fmt"
 	"os"
-	"q/openai"
+	"q/config"
+	"q/llm"
+	. "q/types"
+
 	"runtime"
 	"strings"
 
@@ -24,8 +27,13 @@ const (
 	ReceivingResponse
 )
 
+const (
+	TermMaxWidth        = 100
+	TermSafeZonePadding = 10
+)
+
 type model struct {
-	client           *openai.OpenAIClient
+	client           *llm.LLMClient
 	markdownRenderer *glamour.TermRenderer
 	p                *tea.Program
 
@@ -37,7 +45,6 @@ type model struct {
 	latestCommandResponse string
 	latestCommandIsCode   bool
 
-	partialResponse          string
 	formattedPartialResponse string
 
 	maxWidth int
@@ -46,12 +53,10 @@ type model struct {
 	err         error
 }
 
-type loadMsg struct{}
 type responseMsg struct {
 	response string
 	err      error
 }
-type queryMsg struct{}
 type partialResponseMsg struct {
 	content string
 	err     error
@@ -60,7 +65,7 @@ type setPMsg struct{ p *tea.Program }
 
 // === Commands === //
 
-func makeQuery(client *openai.OpenAIClient, query string) tea.Cmd {
+func makeQuery(client *llm.LLMClient, query string) tea.Cmd {
 	return func() tea.Msg {
 		response, err := client.Query(query)
 		return responseMsg{response: response, err: err}
@@ -126,8 +131,6 @@ func (m model) getConnectionError(err error) string {
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	styleGreen := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	styleDim := lipgloss.NewStyle().Faint(true).Width(m.maxWidth).PaddingLeft(2)
-	if isLikelyBillingError(err.Error()) {
-	}
 	message := fmt.Sprintf("\n  %v\n\n%v\n",
 		styleRed.Render("Error: Failed to connect to OpenAI."),
 		styleDim.Render(err.Error()))
@@ -253,15 +256,8 @@ func (m model) View() string {
 
 // === Initial Model Setup === //
 
-func initialModel(prompt string, client *openai.OpenAIClient) model {
-	maxWidth := 100
-	termSafeZonePadding := 10 // 10 works *shrug*
-
-	termWidth, err := getTermWidth()
-	if err != nil || termWidth < maxWidth {
-		maxWidth = termWidth - termSafeZonePadding
-	}
-
+func initialModel(prompt string, client *llm.LLMClient) model {
+	maxWidth := getTermSafeMaxWidth()
 	ti := textinput.New()
 	ti.Placeholder = "Describe a shell command, or ask a question."
 	ti.Focus()
@@ -301,7 +297,8 @@ func initialModel(prompt string, client *openai.OpenAIClient) model {
 
 // === Main === //
 
-func printAPIKeyNotSetMessage() {
+func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
+	auth := modelConfig.Auth
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 	)
@@ -315,17 +312,38 @@ func printAPIKeyNotSetMessage() {
 
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 
-	msg1 := styleRed.Render("OPENAI_API_KEY environment variable not set.")
+	switch auth {
+	case "OPENAI_API_KEY":
+		msg1 := styleRed.Render("OPENAI_API_KEY environment variable not set.")
 
-	// make it platform agnostic
-	message_string := fmt.Sprintf(`
+		// make it platform agnostic
+		message_string := fmt.Sprintf(`
 	1. Generate your API key at https://platform.openai.com/account/api-keys
 	2. Add your credit card in the API (for the free trial)
 	3. Set your key by running:
 	%s
 	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
 
-	msg2, _ := r.Render(message_string)
+		msg2, _ := r.Render(message_string)
+		fmt.Printf("\n  %v%v", msg1, msg2)
+	default:
+		msg := styleRed.Render(auth + " environment variable not set.")
+		fmt.Printf("\n  %v", msg)
+	}
+}
+
+func printConfigErrorMessage(appConfig config.AppConfig) {
+	maxWidth := getTermSafeMaxWidth()
+	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	styleDim := lipgloss.NewStyle().Faint(true).Width(maxWidth).PaddingLeft(2)
+
+	msg1 := styleRed.Render("Failed to load config file.")
+
+	filePath, err := config.FullFilePath()
+	msg2 := styleDim.Render("Failed to load " + filePath)
+	if err != nil {
+		msg2 = styleDim.Render(err.Error())
+	}
 
 	fmt.Printf("\n  %v%v", msg1, msg2)
 }
@@ -336,21 +354,46 @@ func streamHandler(p *tea.Program) func(content string, err error) {
 	}
 }
 
+func getModelConfig(appConfig config.AppConfig) (ModelConfig, error) {
+	if len(appConfig.Models) == 0 {
+		return ModelConfig{}, fmt.Errorf("no models available")
+	}
+	for _, model := range appConfig.Models {
+		if model.ModelName == appConfig.Preferences.DefaultModel {
+			return model, nil
+		}
+	}
+	// If the preferred model is not found, return the first model
+	return appConfig.Models[0], nil
+}
+
 var RootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
 	Run: func(cmd *cobra.Command, args []string) {
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
-		apiKey := os.Getenv("OPENAI_API_KEY")
-		// The organization key is optional ( just for enterprise users :) )
-		orgKey := os.Getenv("OPENAI_ORGANIZATION_KEY")
-		modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
-		if apiKey == "" {
-			printAPIKeyNotSetMessage()
+		appConfig, err := config.LoadAppConfig()
+		if err != nil {
+			printConfigErrorMessage(appConfig)
 			os.Exit(1)
 		}
-		c := openai.NewClient(apiKey, orgKey, modelOverride)
+
+		modelConfig, err := getModelConfig(appConfig)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		auth := os.Getenv(modelConfig.Auth)
+		if auth == "" || os.Getenv(modelConfig.Auth) == "" {
+			printAPIKeyNotSetMessage(modelConfig)
+			os.Exit(1)
+		}
+		orgID := os.Getenv(modelConfig.OrgID)
+		modelConfig.Auth = auth
+		modelConfig.OrgID = orgID
+
+		c := llm.NewLLMClient(modelConfig)
 		p := tea.NewProgram(initialModel(prompt, c))
 		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {
