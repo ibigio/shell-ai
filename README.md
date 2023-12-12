@@ -1,15 +1,14 @@
 <img width="1280" alt="Frame 7" src="https://github.com/ibigio/shell-ai/assets/25421602/8bbb4ed9-99e3-42df-9a79-dc101dc693ad">
 
 # ShellAI
+
 A delightfully minimal, yet remarkably powerful AI Shell Assistant.
 
 ![shell-ai-demo](https://github.com/ibigio/shell-ai/assets/25421602/f480db5d-3787-49d8-b1bc-a027f65858e6)
 
->
 > "Ten minutes of Googling is now ten seconds in the terminal."
 >
->   ~ Joe C.
->
+> ~ Joe C.
 
 # About
 
@@ -37,6 +36,7 @@ curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
 Type `q` followed by a description of a shell command, code snippet, or general question!
 
 ### Features
+
 - Generate shell commands from a description.
 - Reference code snippets for any programming language.
 - Fast, syntax-highlighted, minimal UI.
@@ -45,31 +45,38 @@ Type `q` followed by a description of a shell command, code snippet, or general 
 - Concise, helpful responses.
 - Tailored support for GPT 3.5 and GPT 4.
 
-### Settings
+### Configuration
 
 Set your [OpenAI API key](https://platform.openai.com/account/api-keys).
+
 ```bash
 export OPENAI_API_KEY=[your key]
 ```
 
-Select between GPT 3.5 (default, faster) and GPT 4 (smarter).
+Configure the default model (or even add your own) at `~/.shell-ai/config.yaml`.
 
-```bash
-export OPENAI_MODEL_OVERRIDE="gpt-4"
-```
+(We currently support `gpt-3.5-turbo` and `gpt-4`, but OSS models coming soon!)
 
 # Examples
+
 ### Shell Commands
+
 `$ q make a new git branch`
+
 ```
 git branch new-branch
 ```
+
 `$ q find files that contain "administrative" in the name`
+
 ```
 find /path/to/directory -type f -name "*administrative*"
 ```
+
 ### Code Snippets
+
 `$ q initialize a static map in golang`
+
 ```golang
 var staticMap = map[string]int{
     "key1": 1,
@@ -77,7 +84,9 @@ var staticMap = map[string]int{
     "key3": 3,
 }
 ```
+
 `$ q create a generator function in python for dates`
+
 ```python
 def date_generator(start_date, end_date):
     current_date = start_date
@@ -89,3 +98,5 @@ def date_generator(start_date, end_date):
 # Contributing
 
 ShellAI is polished but by no means finished, feel free to open issues or pull requests on the repo! If you have other ideas or just want to say hi, go ahead and reach out!
+
+Also I'll be adding support for OSS models in the coming weeks, adding your own is now easier! Give it a shot in `~/.shell-ai/config.yaml`. DM for questions [@ilanbigio](https://twitter.com/ilanbigio) :)
