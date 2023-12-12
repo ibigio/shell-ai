@@ -45,7 +45,6 @@ type model struct {
 	latestCommandResponse string
 	latestCommandIsCode   bool
 
-	partialResponse          string
 	formattedPartialResponse string
 
 	maxWidth int
@@ -54,12 +53,10 @@ type model struct {
 	err         error
 }
 
-type loadMsg struct{}
 type responseMsg struct {
 	response string
 	err      error
 }
-type queryMsg struct{}
 type partialResponseMsg struct {
 	content string
 	err     error
@@ -300,20 +297,6 @@ func initialModel(prompt string, client *llm.LLMClient) model {
 
 // === Main === //
 
-func getShellSyntax() string {
-	if runtime.GOOS == "windows" {
-		return "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
-	}
-	return "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
-}
-
-func getProfileScriptName() string {
-	if runtime.GOOS == "windows" {
-		return "$profile"
-	}
-	return ".zshrc or .bashrc"
-}
-
 func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 	auth := modelConfig.Auth
 	r, _ := glamour.NewTermRenderer(
@@ -335,12 +318,11 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 
 		// make it platform agnostic
 		message_string := fmt.Sprintf(`
-		1. Generate your API key at https://platform.openai.com/account/api-keys
-		2. Add your credit card in the API (for the free trial)
-		3. Set your key by running:
-		%s
-	4. (Recommended) Add that ^ line to your %s file(s).
-	5. If you are a member of an organization do the same thing but with OPENAI_ORGANIZATION_KEY`, shellSyntax, profileScriptName)
+	1. Generate your API key at https://platform.openai.com/account/api-keys
+	2. Add your credit card in the API (for the free trial)
+	3. Set your key by running:
+	%s
+	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
 
 		msg2, _ := r.Render(message_string)
 		fmt.Printf("\n  %v%v", msg1, msg2)
@@ -403,13 +385,15 @@ var RootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		auth := os.Getenv(modelConfig.Auth)
-
 		if auth == "" || os.Getenv(modelConfig.Auth) == "" {
 			printAPIKeyNotSetMessage(modelConfig)
 			os.Exit(1)
 		}
+		orgID := os.Getenv(modelConfig.OrgID)
+		modelConfig.Auth = auth
+		modelConfig.OrgID = orgID
 
-		c := llm.NewLLMClient(modelConfig, auth)
+		c := llm.NewLLMClient(modelConfig)
 		p := tea.NewProgram(initialModel(prompt, c))
 		c.StreamCallback = streamHandler(p)
 		if _, err := p.Run(); err != nil {

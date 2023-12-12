@@ -19,49 +19,57 @@ type AppConfig struct {
 
 //go:embed config.yaml
 var embeddedConfigFile []byte
-var configFilepath string = ".shell-ai"
+var configFilePath string = ".shell-ai/config.yaml"
 
 func FullFilePath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("error getting home directory: %s", err)
 	}
-	configFilepath := filepath.Join(homeDir, configFilepath)
-	return configFilepath, nil
+	configFilePath := filepath.Join(homeDir, configFilePath)
+	return configFilePath, nil
 }
 
 func LoadAppConfig() (config AppConfig, err error) {
-	filepath, err := FullFilePath()
+	filePath, err := FullFilePath()
 	if err != nil {
 		return config, fmt.Errorf("error getting config file path: %s", err)
 	}
 
 	// if file doesn't exist, create it with defaults
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		return createConfigWithDefaults(filepath)
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return createConfigWithDefaults(filePath)
 	}
-	return loadExistingConfig(filepath)
+	return loadExistingConfig(filePath)
 }
 
-func createConfigWithDefaults(filepath string) (AppConfig, error) {
+func createConfigWithDefaults(filePath string) (AppConfig, error) {
 	config := AppConfig{}
 	err := yaml.Unmarshal(embeddedConfigFile, &config)
 	if err != nil {
 		return config, fmt.Errorf("error unmarshalling embedded config: %s", err)
 	}
 
+	config.Preferences.DefaultModel = "gpt-4"
+
+	// set default model to legacy option (for backwards compat)
 	modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
-	if modelOverride == "" {
-		modelOverride = "gpt-4"
+	if modelOverride != "" {
+		config.Preferences.DefaultModel = modelOverride
 	}
-	config.Preferences.DefaultModel = modelOverride
 
 	modifiedConfig, err := yaml.Marshal(config)
 	if err != nil {
 		return config, fmt.Errorf("error marshalling modified config: %s", err)
 	}
 
-	err = os.WriteFile(filepath, modifiedConfig, 0644)
+	// Create all directories in the filepath
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return config, fmt.Errorf("error creating directories: %s", err)
+	}
+
+	err = os.WriteFile(filePath, modifiedConfig, 0644)
 	if err != nil {
 		return config, fmt.Errorf("error writing modified config to file: %s", err)
 	}
@@ -69,9 +77,9 @@ func createConfigWithDefaults(filepath string) (AppConfig, error) {
 	return config, nil
 }
 
-func loadExistingConfig(filepath string) (AppConfig, error) {
+func loadExistingConfig(filePath string) (AppConfig, error) {
 	config := AppConfig{}
-	yamlFile, err := os.ReadFile(filepath)
+	yamlFile, err := os.ReadFile(filePath)
 	if err != nil {
 		return config, fmt.Errorf("error reading config file: %s", err)
 	}

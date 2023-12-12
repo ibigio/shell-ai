@@ -20,7 +20,7 @@ type LLMClient struct {
 	httpClient *http.Client
 }
 
-func NewLLMClient(config ModelConfig, auth string) *LLMClient {
+func NewLLMClient(config ModelConfig) *LLMClient {
 	return &LLMClient{
 		config:   config,
 		messages: append([]Message(nil), config.Prompt...),
@@ -30,21 +30,6 @@ func NewLLMClient(config ModelConfig, auth string) *LLMClient {
 		},
 	}
 }
-
-// func NewClient(apiKey string, model string, url string, model_prompt []Message) *LLMClient {
-// 	return &LLMClient{
-// 		apiKey:    apiKey,
-// 		url:       url,
-// 		model:     model,
-// 		maxTokens: 256,
-
-// 		messages: model_prompt,
-
-// 		httpClient: &http.Client{
-// 			Timeout: time.Second * 120,
-// 		},
-// 	}
-// }
 
 func (c *LLMClient) createRequest(payload Payload) (*http.Request, error) {
 	payloadBytes, err := json.Marshal(payload)
@@ -56,6 +41,9 @@ func (c *LLMClient) createRequest(payload Payload) (*http.Request, error) {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.config.Auth)
+	if c.config.OrgID != "" {
+		req.Header.Set("OpenAI-Organization", c.config.OrgID)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	return req, nil
 }
@@ -70,6 +58,7 @@ func (c *LLMClient) Query(query string) (string, error) {
 		Temperature: 0,
 		Stream:      true,
 	}
+
 	message, err := c.callStream(payload)
 	if err != nil {
 		return "", err

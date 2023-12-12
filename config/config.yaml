@@ -4,7 +4,8 @@ preferences:
 models:
   - name: gpt-4
     endpoint: https://api.openai.com/v1/chat/completions
-    auth: OPENAI_API_KEY
+    auth_env_var: OPENAI_API_KEY
+    org_env_var: OPENAI_ORG_ID
     prompt:
       [
         {
@@ -17,7 +18,8 @@ models:
 
   - name: gpt-3.5-turbo
     endpoint: https://api.openai.com/v1/chat/completions
-    auth: OPENAI_API_KEY
+    auth_env_var: OPENAI_API_KEY
+    org_env_var: OPENAI_ORG_ID
     prompt:
       [
         {

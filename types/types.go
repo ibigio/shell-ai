@@ -3,7 +3,8 @@ package types
 type ModelConfig struct {
 	ModelName string    `yaml:"name"`
 	Endpoint  string    `yaml:"endpoint"`
-	Auth      string    `yaml:"auth"`
+	Auth      string    `yaml:"auth_env_var"`
+	OrgID     string    `yaml:"org_env_var,omitempty"`
 	Prompt    []Message `yaml:"prompt"`
 }
 
@@ -19,11 +20,10 @@ type Preferences struct {
 type Payload struct {
 	Model       string    `json:"model"`
 	Prompt      string    `json:"prompt,omitempty"`
-	MaxTokens   int       `json:"max_tokens"`
-	Temperature float32   `json:"temperature"`
-	Stop        []string  `json:"stop,omitempty"`
+	MaxTokens   int       `json:"max_tokens,omitempty"`
+	Temperature float32   `json:"temperature,omitempty"`
 	Messages    []Message `json:"messages"`
-	Stream      bool      `json:"stream"`
+	Stream      bool      `json:"stream,omitempty"`
 }
 
 type ResponseData struct {
