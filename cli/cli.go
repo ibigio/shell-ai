@@ -367,38 +367,47 @@ func getModelConfig(appConfig config.AppConfig) (ModelConfig, error) {
 	return appConfig.Models[0], nil
 }
 
+func runQProgram(prompt string) {
+	appConfig, err := config.LoadAppConfig()
+	if err != nil {
+		printConfigErrorMessage(appConfig)
+		os.Exit(1)
+	}
+
+	modelConfig, err := getModelConfig(appConfig)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+	auth := os.Getenv(modelConfig.Auth)
+	if auth == "" || os.Getenv(modelConfig.Auth) == "" {
+		printAPIKeyNotSetMessage(modelConfig)
+		os.Exit(1)
+	}
+	orgID := os.Getenv(modelConfig.OrgID)
+	modelConfig.Auth = auth
+	modelConfig.OrgID = orgID
+
+	c := llm.NewLLMClient(modelConfig)
+	p := tea.NewProgram(initialModel(prompt, c))
+	c.StreamCallback = streamHandler(p)
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
+	}
+}
+
 var RootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
 	Run: func(cmd *cobra.Command, args []string) {
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
-		appConfig, err := config.LoadAppConfig()
-		if err != nil {
-			printConfigErrorMessage(appConfig)
-			os.Exit(1)
+		if len(args) > 0 && args[0] == "config" {
+			config.RunConfigProgram()
+			return
 		}
+		runQProgram(prompt)
 
-		modelConfig, err := getModelConfig(appConfig)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		auth := os.Getenv(modelConfig.Auth)
-		if auth == "" || os.Getenv(modelConfig.Auth) == "" {
-			printAPIKeyNotSetMessage(modelConfig)
-			os.Exit(1)
-		}
-		orgID := os.Getenv(modelConfig.OrgID)
-		modelConfig.Auth = auth
-		modelConfig.OrgID = orgID
-
-		c := llm.NewLLMClient(modelConfig)
-		p := tea.NewProgram(initialModel(prompt, c))
-		c.StreamCallback = streamHandler(p)
-		if _, err := p.Run(); err != nil {
-			fmt.Printf("Alas, there's been an error: %v", err)
-			os.Exit(1)
-		}
 	},
 }
