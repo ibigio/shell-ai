@@ -43,6 +43,10 @@ func LoadAppConfig() (config AppConfig, err error) {
 	return loadExistingConfig(filePath)
 }
 
+func SaveAppConfig(config AppConfig) error {
+	return writeConfigToFile(config)
+}
+
 func createConfigWithDefaults(filePath string) (AppConfig, error) {
 	config := AppConfig{}
 	err := yaml.Unmarshal(embeddedConfigFile, &config)
@@ -58,23 +62,7 @@ func createConfigWithDefaults(filePath string) (AppConfig, error) {
 		config.Preferences.DefaultModel = modelOverride
 	}
 
-	modifiedConfig, err := yaml.Marshal(config)
-	if err != nil {
-		return config, fmt.Errorf("error marshalling modified config: %s", err)
-	}
-
-	// Create all directories in the filepath
-	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return config, fmt.Errorf("error creating directories: %s", err)
-	}
-
-	err = os.WriteFile(filePath, modifiedConfig, 0644)
-	if err != nil {
-		return config, fmt.Errorf("error writing modified config to file: %s", err)
-	}
-
-	return config, nil
+	return config, writeConfigToFile(config)
 }
 
 func loadExistingConfig(filePath string) (AppConfig, error) {
@@ -89,4 +77,24 @@ func loadExistingConfig(filePath string) (AppConfig, error) {
 	}
 
 	return config, nil
+}
+
+func writeConfigToFile(config AppConfig) error {
+	filePath, err := FullFilePath()
+	// Create all directories in the filepath
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("error creating directories: %s", err)
+	}
+	configData, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("error marshalling config: %s", err)
+	}
+
+	err = os.WriteFile(filePath, configData, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing config to file: %s", err)
+	}
+
+	return nil
 }
