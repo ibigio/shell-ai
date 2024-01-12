@@ -107,9 +107,16 @@ func openEditor() tea.Cmd {
 	})
 }
 
+func openBrowser(url string) tea.Cmd {
+	return func() tea.Msg {
+		util.OpenBrowser(url)
+		return nil
+	}
+}
+
 func openGithubRepo() tea.Cmd {
 	return func() tea.Msg {
-		util.OpenBrowser("https://github.com/ibigio/shell-ai")
+		util.OpenBrowser("https://github.com/ibigio/shell-ai?tab=readme-ov-file#contributing")
 		return nil
 	}
 }
@@ -332,7 +339,7 @@ func mainMenu(appConfig AppConfig) list.Model {
 		},
 		{
 			title:     "Contribute",
-			selectCmd: openGithubRepo(),
+			selectCmd: openBrowser("https://github.com/ibigio/shell-ai#contributing"),
 		},
 		{
 			title:     "Quit",
@@ -365,12 +372,14 @@ func configureModelsMenu(appConfig AppConfig) list.Model {
 		})
 	}
 	modelItems = append(modelItems, menuItem{
-		title: "Add Model",
-		data:  "coming soon!",
+		title:     "Add Model",
+		data:      "coming soon!",
+		selectCmd: openBrowser("https://github.com/ibigio/shell-ai#custom-model-configuration-new"),
 	})
 	modelItems = append(modelItems, menuItem{
-		title: "Install Model",
-		data:  "coming soon!",
+		title:     "Install Model",
+		data:      "coming soon!",
+		selectCmd: openBrowser("https://github.com/ibigio/shell-ai#custom-model-configuration-new"),
 	})
 	return defaultList("Configure Models (coming soon!)", modelItems)
 }

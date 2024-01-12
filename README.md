@@ -119,7 +119,7 @@ preferences:
   default_model: gpt-4-1106-preview
 
 models:
-  - name: gpt-4
+  - name: gpt-4-1106-preview
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
