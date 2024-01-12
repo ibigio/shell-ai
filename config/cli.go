@@ -107,6 +107,13 @@ func openEditor() tea.Cmd {
 	})
 }
 
+func openGithubRepo() tea.Cmd {
+	return func() tea.Msg {
+		util.OpenBrowser("https://github.com/ibigio/shell-ai")
+		return nil
+	}
+}
+
 type configSavedMsg struct{}
 
 func saveConfig(config AppConfig) tea.Cmd {
@@ -241,6 +248,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case setMenuMsg:
 		m.backstack = append(m.backstack, m.state)
 		m.list = msg.menu(m.appConfig)
+		m.state = state{page: ListPage, menu: msg.menu}
 
 	case setDefaultModelMsg:
 		m.appConfig.Preferences.DefaultModel = msg.model
@@ -313,14 +321,18 @@ func mainMenu(appConfig AppConfig) list.Model {
 			data:      appConfig.Preferences.DefaultModel,
 			selectCmd: setMenu(defaultModelSelectMenu),
 		},
-		// {
-		// 	title:     "Configure Models",
-		// 	selectCmd: setMenu(configureModelsMenu),
-		// },
 		{
 			title:     "Edit Config File",
 			data:      "~/.shell-ai/config.yaml",
 			selectCmd: openEditor(),
+		},
+		{
+			title:     "Configure Models",
+			selectCmd: setMenu(configureModelsMenu),
+		},
+		{
+			title:     "Contribute",
+			selectCmd: openGithubRepo(),
 		},
 		{
 			title:     "Quit",
@@ -354,9 +366,13 @@ func configureModelsMenu(appConfig AppConfig) list.Model {
 	}
 	modelItems = append(modelItems, menuItem{
 		title: "Add Model",
-		// selectCmd: a
+		data:  "coming soon!",
 	})
-	return defaultList("Configure Models", modelItems)
+	modelItems = append(modelItems, menuItem{
+		title: "Install Model",
+		data:  "coming soon!",
+	})
+	return defaultList("Configure Models (coming soon!)", modelItems)
 }
 
 func modelDetailsMenu(modelConfig types.ModelConfig) menuFunc {
@@ -383,7 +399,7 @@ func modelDetailsForModelMenu(appConfig AppConfig, modelConfig types.ModelConfig
 			title: "Prompt",
 		},
 	}
-	return defaultList(modelConfig.ModelName, items)
+	return defaultList(modelConfig.ModelName+"(editing coming soon!)", items)
 }
 
 func PrintConfigErrorMessage(err error) {

@@ -123,6 +123,8 @@ func (m model) formatResponse(response string, isCode bool) (string, error) {
 	return formatted, nil
 }
 
+// TODO: parse the model endpoint to infer whether it's openai, other, or local.
+// for local, suggest it may not be running, and how to run it
 func (m model) getConnectionError(err error) string {
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	styleGreen := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
@@ -364,6 +366,10 @@ func runQProgram(prompt string) {
 		printAPIKeyNotSetMessage(modelConfig)
 		os.Exit(1)
 	}
+	// everything checks out, save the config
+	// TODO: maybe add a validating function
+	config.SaveAppConfig(appConfig)
+
 	orgID := os.Getenv(modelConfig.OrgID)
 	modelConfig.Auth = auth
 	modelConfig.OrgID = orgID

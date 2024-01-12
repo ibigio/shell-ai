@@ -14,7 +14,7 @@ import (
 type AppConfig struct {
 	Models      []ModelConfig `yaml:"models"`
 	Preferences Preferences   `yaml:"preferences"`
-	Version     string        `yaml:"version"`
+	Version     string        `yaml:"config_format_version"`
 }
 
 // //go:embed config.yaml
@@ -77,9 +77,6 @@ func createConfigWithDefaults(filePath string) (AppConfig, error) {
 	if err != nil {
 		return config, fmt.Errorf("error unmarshalling embedded config: %s", err)
 	}
-
-	config.Preferences.DefaultModel = "gpt-4"
-
 	// set default model to legacy option (for backwards compat)
 	modelOverride := os.Getenv("OPENAI_MODEL_OVERRIDE")
 	if modelOverride != "" {
@@ -102,7 +99,7 @@ func loadExistingConfig(filePath string) (AppConfig, error) {
 	return config, nil
 }
 
-func saveBackupConfig(config AppConfig) error {
+func SaveBackupConfig(config AppConfig) error {
 	filePath, err := FullFilePath(backupConfigFilePath)
 	if err != nil {
 		return err
@@ -135,6 +132,6 @@ func writeConfigToFile(config AppConfig) error {
 	if err != nil {
 		return fmt.Errorf("error writing config to file: %s", err)
 	}
-	saveBackupConfig(config)
+	SaveBackupConfig(config)
 	return nil
 }

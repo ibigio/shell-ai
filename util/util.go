@@ -1,6 +1,8 @@
 package util
 
 import (
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/mattn/go-tty"
@@ -80,4 +82,19 @@ func getTermWidth() (width int, err error) {
 
 func IsLikelyBillingError(s string) bool {
 	return strings.Contains(s, "429 Too Many Requests")
+}
+
+func OpenBrowser(url string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default: // For Linux or anything else
+		cmd = exec.Command("xdg-open", url)
+	}
+
+	return cmd.Start()
 }
