@@ -108,7 +108,7 @@ def date_generator(start_date, end_date):
 
 # Custom Model Configuration (New!)
 
-You can now configure model prompts and even add your own model setups in the `~/.shell-ai/config.yaml` file! ShellAI _should_ support any model that can be accessed through a chat-like endpoint... including local OSS models!
+You can now configure model prompts and even add your own model setups in the `~/.shell-ai/config.yaml` file! ShellAI _should_ support any model that can be accessed through a chat-like endpoint... including local OSS models.
 
 (I'm working on making config entirely possible through `q config`, but until then you'll have to edit the file directly.)
 
@@ -137,7 +137,7 @@ models:
 config_format_version: "1"
 ````
 
-**Note:** The `auth_env_var` is set to `OPENAI_API_KEY` verbatim, not the key itself, so as to not have sensitive information in the config file.
+**Note:** The `auth_env_var` is set to `OPENAI_API_KEY` verbatim, not the key itself, so as to not keep sensitive information in the config file.
 
 ### Setting Up a Local Model
 
@@ -146,14 +146,14 @@ As a proof of concept I set up `stablelm-zephyr-3b.Q8_0` on my MacBook Pro (16GB
 Here's what I did:
 
 1. I cloned and set up `llama.cpp` ([repo](https://github.com/ggerganov/llama.cpp)). (Just follow the instructions.)
-2. Then I downloaded the `stablelm-zephyr-3b.Q8_0` GGUF [from hugging face](https://huggingface.co/TheBloke/stablelm-zephyr-3b-GGUF) (thanks, TheBloke) and saved it under `llama.cpp/models/`.
+2. Then I downloaded the (`stablelm-zephyr-3b.Q8_0`)[https://huggingface.co/TheBloke/stablelm-zephyr-3b-GGUF/blob/main/stablelm-zephyr-3b.Q8_0.gguf] GGUF [from hugging face](https://huggingface.co/TheBloke/stablelm-zephyr-3b-GGUF) (thanks, TheBloke) and saved it under `llama.cpp/models/`.
 3. Then I ran the model in server mode with chat syntax (from `llama.cpp/`):
 
 ```bash
 ./server -m models/stablelm-zephyr-3b.Q8_0.gguf --host 0.0.0.0 --port 8080
 ```
 
-4. Finally I added the new `model` config to my `~/.shell-ai/config.yaml`. Wrestled with the prompt a bit – bet you can do better. (As you can see, YAML is [flexible](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html).)
+4. Finally I added the new `model` config to my `~/.shell-ai/config.yaml`, and wrestled with the prompt until it worked – bet you can do better. (As you can see, YAML is [flexible](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html).)
 
 ````yaml
 models:
@@ -168,6 +168,18 @@ models:
           into a terminal command. By default always only output code, and in a code block.
           DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the
           question the users asks. Do not add explanations for your code. Do not output
+          any non-code words at all. Just output the code. Short is better. However, if
+          the user is clearly asking a general question then answer it very briefly and
+          well. Indent code correctly.
+      - role: user
+        content: get the current time from some website
+      - role: assistant
+        content: |-
+          ```bash
+          curl -s http://worldtimeapi.org/api/ip | jq '.datetime'
+          ```
+      - role: user
+        content: print hi
       - role: assistant
         content: |-
           ```bash
