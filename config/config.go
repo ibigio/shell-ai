@@ -17,21 +17,25 @@ type AppConfig struct {
 	Version     string        `yaml:"version"`
 }
 
+// //go:embed config.yaml
+// var embeddedConfigFile []byte
+
 //go:embed config.yaml
 var embeddedConfigFile []byte
 var configFilePath string = ".shell-ai/config.yaml"
+var backupConfigFilePath string = ".shell-ai/.backup-config.yaml"
 
-func FullFilePath() (string, error) {
+func FullFilePath(relativeFilePath string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("error getting home directory: %s", err)
 	}
-	configFilePath := filepath.Join(homeDir, configFilePath)
+	configFilePath := filepath.Join(homeDir, relativeFilePath)
 	return configFilePath, nil
 }
 
 func LoadAppConfig() (config AppConfig, err error) {
-	filePath, err := FullFilePath()
+	filePath, err := FullFilePath(configFilePath)
 	if err != nil {
 		return config, fmt.Errorf("error getting config file path: %s", err)
 	}
@@ -44,6 +48,26 @@ func LoadAppConfig() (config AppConfig, err error) {
 }
 
 func SaveAppConfig(config AppConfig) error {
+	return writeConfigToFile(config)
+}
+
+func ResetAppConfigToDefault() error {
+	_, err := createConfigWithDefaults(configFilePath)
+	return err
+}
+
+func RevertAppConfigToBackup() error {
+	fullConfigPath, _ := FullFilePath(configFilePath)
+	fullBackupConfigPath, _ := FullFilePath(backupConfigFilePath)
+
+	// delete the file if it exists
+	if err := os.Remove(fullConfigPath); !os.IsNotExist(err) && err != nil {
+		return err
+	}
+	config, err := loadExistingConfig(fullBackupConfigPath)
+	if err != nil {
+		return err
+	}
 	return writeConfigToFile(config)
 }
 
@@ -75,12 +99,28 @@ func loadExistingConfig(filePath string) (AppConfig, error) {
 	if err != nil {
 		return config, fmt.Errorf("error unmarshalling config file: %s", err)
 	}
-
 	return config, nil
 }
 
+func saveBackupConfig(config AppConfig) error {
+	filePath, err := FullFilePath(backupConfigFilePath)
+	if err != nil {
+		return err
+	}
+	configData, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("error marshalling config: %s", err)
+	}
+
+	err = os.WriteFile(filePath, configData, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing config to file: %s", err)
+	}
+	return nil
+}
+
 func writeConfigToFile(config AppConfig) error {
-	filePath, err := FullFilePath()
+	filePath, _ := FullFilePath(configFilePath)
 	// Create all directories in the filepath
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -95,6 +135,6 @@ func writeConfigToFile(config AppConfig) error {
 	if err != nil {
 		return fmt.Errorf("error writing config to file: %s", err)
 	}
-
+	saveBackupConfig(config)
 	return nil
 }

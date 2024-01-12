@@ -6,6 +6,7 @@ import (
 	"q/config"
 	"q/llm"
 	. "q/types"
+	"q/util"
 
 	"runtime"
 	"strings"
@@ -25,11 +26,6 @@ const (
 	Loading State = iota
 	RecevingInput
 	ReceivingResponse
-)
-
-const (
-	TermMaxWidth        = 100
-	TermSafeZonePadding = 10
 )
 
 type model struct {
@@ -134,7 +130,7 @@ func (m model) getConnectionError(err error) string {
 	message := fmt.Sprintf("\n  %v\n\n%v\n",
 		styleRed.Render("Error: Failed to connect to OpenAI."),
 		styleDim.Render(err.Error()))
-	if isLikelyBillingError(err.Error()) {
+	if util.IsLikelyBillingError(err.Error()) {
 		message = fmt.Sprintf("%v\n  %v %v\n\n  %v%v\n\n",
 			message,
 			styleGreen.Render("Hint:"),
@@ -157,12 +153,12 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// parse out the code block
-	content, isOnlyCode := extractFirstCodeBlock(msg.response)
+	content, isOnlyCode := util.ExtractFirstCodeBlock(msg.response)
 	if content != "" {
 		m.latestCommandResponse = content
 	}
 
-	formatted, err := m.formatResponse(msg.response, startsWithCodeBlock(msg.response))
+	formatted, err := m.formatResponse(msg.response, util.StartsWithCodeBlock(msg.response))
 	if err != nil {
 		// TODO: handle error
 		panic(err)
@@ -184,7 +180,7 @@ func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 
 func (m model) handlePartialResponseMsg(msg partialResponseMsg) (tea.Model, tea.Cmd) {
 	m.state = ReceivingResponse
-	isCode := startsWithCodeBlock(msg.content)
+	isCode := util.StartsWithCodeBlock(msg.content)
 	formatted, err := m.formatResponse(msg.content, isCode)
 	if err != nil {
 		// TODO: handle error
@@ -257,7 +253,7 @@ func (m model) View() string {
 // === Initial Model Setup === //
 
 func initialModel(prompt string, client *llm.LLMClient) model {
-	maxWidth := getTermSafeMaxWidth()
+	maxWidth := util.GetTermSafeMaxWidth()
 	ti := textinput.New()
 	ti.Placeholder = "Describe a shell command, or ask a question."
 	ti.Focus()
@@ -325,27 +321,11 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
 
 		msg2, _ := r.Render(message_string)
-		fmt.Printf("\n  %v%v", msg1, msg2)
+		fmt.Printf("\n  %v%v\n", msg1, msg2)
 	default:
 		msg := styleRed.Render(auth + " environment variable not set.")
 		fmt.Printf("\n  %v", msg)
 	}
-}
-
-func printConfigErrorMessage(appConfig config.AppConfig) {
-	maxWidth := getTermSafeMaxWidth()
-	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	styleDim := lipgloss.NewStyle().Faint(true).Width(maxWidth).PaddingLeft(2)
-
-	msg1 := styleRed.Render("Failed to load config file.")
-
-	filePath, err := config.FullFilePath()
-	msg2 := styleDim.Render("Failed to load " + filePath)
-	if err != nil {
-		msg2 = styleDim.Render(err.Error())
-	}
-
-	fmt.Printf("\n  %v%v", msg1, msg2)
 }
 
 func streamHandler(p *tea.Program) func(content string, err error) {
@@ -370,13 +350,13 @@ func getModelConfig(appConfig config.AppConfig) (ModelConfig, error) {
 func runQProgram(prompt string) {
 	appConfig, err := config.LoadAppConfig()
 	if err != nil {
-		printConfigErrorMessage(appConfig)
+		config.PrintConfigErrorMessage(err)
 		os.Exit(1)
 	}
 
 	modelConfig, err := getModelConfig(appConfig)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		config.PrintConfigErrorMessage(err)
 		os.Exit(1)
 	}
 	auth := os.Getenv(modelConfig.Auth)
@@ -404,7 +384,7 @@ var RootCmd = &cobra.Command{
 		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
 		if len(args) > 0 && args[0] == "config" {
-			config.RunConfigProgram()
+			config.RunConfigProgram(args)
 			return
 		}
 		runQProgram(prompt)

@@ -1,4 +1,4 @@
-package cli
+package util
 
 import (
 	"strings"
@@ -6,14 +6,19 @@ import (
 	"github.com/mattn/go-tty"
 )
 
-func startsWithCodeBlock(s string) bool {
+const (
+	TermMaxWidth        = 100
+	TermSafeZonePadding = 10
+)
+
+func StartsWithCodeBlock(s string) bool {
 	if len(s) <= 3 {
 		return strings.Repeat("`", len(s)) == s
 	}
 	return strings.HasPrefix(s, "```")
 }
 
-func extractFirstCodeBlock(s string) (content string, isOnlyCode bool) {
+func ExtractFirstCodeBlock(s string) (content string, isOnlyCode bool) {
 	isOnlyCode = true
 	if len(s) <= 3 {
 		return "", false
@@ -54,7 +59,7 @@ func extractFirstCodeBlock(s string) (content string, isOnlyCode bool) {
 	return
 }
 
-func getTermSafeMaxWidth() int {
+func GetTermSafeMaxWidth() int {
 	maxWidth := TermMaxWidth
 	termWidth, err := getTermWidth()
 	if err != nil || termWidth < maxWidth {
@@ -73,6 +78,6 @@ func getTermWidth() (width int, err error) {
 	return width, err
 }
 
-func isLikelyBillingError(s string) bool {
+func IsLikelyBillingError(s string) bool {
 	return strings.Contains(s, "429 Too Many Requests")
 }

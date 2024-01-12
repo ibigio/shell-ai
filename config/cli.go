@@ -1,21 +1,25 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"q/types"
+	"q/util"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
 const listHeight = 12
 
 var (
+	styleRed          = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	greyStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	titleStyle        = lipgloss.NewStyle().MarginLeft(2).Foreground(lipgloss.Color("240"))
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
@@ -89,7 +93,7 @@ type updateConfigMsg struct {
 type editorFinishedMsg struct{ err error }
 
 func openEditor() tea.Cmd {
-	fullPath, err := FullFilePath()
+	fullPath, err := FullFilePath(configFilePath)
 	if err != nil {
 		return tea.Cmd(func() tea.Msg { return editorFinishedMsg{err} })
 	}
@@ -382,11 +386,104 @@ func modelDetailsForModelMenu(appConfig AppConfig, modelConfig types.ModelConfig
 	return defaultList(modelConfig.ModelName, items)
 }
 
-func RunConfigProgram() {
+func PrintConfigErrorMessage(err error) {
+	maxWidth := util.GetTermSafeMaxWidth()
+	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9")).PaddingLeft(2)
+	styleDim := lipgloss.NewStyle().Faint(true).Width(maxWidth).PaddingLeft(2)
+
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+	)
+
+	msg1 := styleRed.Render("Failed to load config file.")
+
+	filePath, _ := FullFilePath(configFilePath)
+	msg2 := styleDim.Render(err.Error())
+	revertConfigCmd := "q config revert"
+	resetConfigCmd := "q config reset"
+
+	// Concatenate message string with backticks
+	message_string := fmt.Sprintf(
+		"---\n"+
+			"# Options:\n\n"+
+			"1. Run `%s` to load the automatic backup - you're welcome.\n"+
+			"2. Nuke it. Run `%s` to reset the config to default.\n"+
+			"3. DIY - take a look at the config and fix the errors. It's at:\n\n"+
+			" `%s`\n\n",
+		revertConfigCmd, resetConfigCmd, filePath)
+
+	msg3, _ := r.Render(message_string)
+
+	fmt.Printf("\n%s\n\n%s%s", msg1, msg2, msg3)
+}
+
+func handleConfigResets(args []string) {
+	if len(args) < 2 {
+		return
+	}
+
+	greyStylePadded := greyStyle.PaddingLeft(2)
+	reader := bufio.NewReader(os.Stdin)
+
+	warningMessage, confirmationMessage := getMessages(args[1], greyStylePadded)
+	fmt.Print("\n" + styleRed.PaddingLeft(2).Render(warningMessage) + "\n\n" + confirmationMessage + " ")
+
+	response, _ := reader.ReadString('\n')
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	if response == "yes" || response == "y" {
+		handleResetOrRevert(args[1])
+	} else {
+		fmt.Println("\n" + styleRed.PaddingLeft(2).Render("Operation cancelled.\n"))
+	}
+	os.Exit(0)
+}
+
+func getMessages(arg string, greyStylePadded lipgloss.Style) (string, string) {
+	warningMessage := "WARNING: You are about to "
+	confirmationMessage := greyStylePadded.Render("Do you want to continue? (y/N):")
+
+	switch arg {
+	case "reset":
+		warningMessage += "reset the config file to the default."
+	case "revert":
+		warningMessage += "revert the config file to the last working automatic backup."
+	}
+
+	return warningMessage, confirmationMessage
+}
+
+func handleResetOrRevert(arg string) {
+	var (
+		err     error
+		message string
+	)
+
+	switch arg {
+	case "reset":
+		err = ResetAppConfigToDefault()
+		message = "Config reset to default.\n"
+	case "revert":
+		err = RevertAppConfigToBackup()
+		message = "Config reverted to backup.\n"
+	}
+
+	if err == nil {
+		fmt.Println("\n" + greyStyle.PaddingLeft(2).Render(message))
+	} else {
+		fmt.Println("\n" + styleRed.PaddingLeft(2).Render("Operation failed.\n"))
+		fmt.Println("\n" + styleRed.PaddingLeft(2).Render(fmt.Sprintf("Error: %s\n", err)))
+	}
+}
+
+func RunConfigProgram(args []string) {
+
+	handleConfigResets(args)
 
 	appConfig, err := LoadAppConfig()
 	if err != nil {
-		panic(err)
+		PrintConfigErrorMessage(err)
+		os.Exit(1)
 	}
 
 	m := model{
