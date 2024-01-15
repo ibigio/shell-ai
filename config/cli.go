@@ -264,7 +264,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case editorFinishedMsg:
 		if msg.err != nil {
-			return m, tea.Quit
+			return m, quit()
 		}
 	}
 
