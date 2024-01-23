@@ -18,6 +18,10 @@ A delightfully minimal, yet remarkably powerful AI Shell Assistant.
 
 For developers, referencing things online is inevitable – but one can only look up "how to do [X] in git" so many times before losing your mind.
 
+<p align="center">
+  <img src="https://imgs.xkcd.com/comics/tar.png">
+</p>
+
 **ShellAI** is meant to be a faster and smarter alternative to online reference: for shell commands, code examples, error outputs, and high-level explanations. We believe tools should be beautiful, minimal, and convenient, to let you get back to what you were doing as quickly and pleasantly as possible. That is the purpose of ShellAI.
 
 _New: ShellAI now supports local models! See [Custom Model Configuration](#custom-model-configuration-new) for more._
