@@ -204,6 +204,17 @@ And huzzah! You can now use ShellAI on a plane.
 
 (Fun fact, I implemented a good bit of the initial config TUI on a plane using this exact local model.)
 
+### Setting Up Azure OpenAI endpoint
+
+Define `AZURE_OPENAI_API_KEY` environment variable and make few changes to the config file.
+
+```yaml
+models:
+  - name: azure-gpt-4
+    endpoint: https://<resource_name>.openai.azure.com/openai/deployments/<deployment_name>/chat/completions?api-version=<api_version>
+    auth_env_var: AZURE_OPENAI_API_KEY
+```
+
 ### I Fucked Up The Config File
 
 Great! Means you're having fun.
