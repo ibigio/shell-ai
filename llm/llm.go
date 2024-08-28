@@ -48,6 +48,9 @@ func (c *LLMClient) createRequest(payload Payload) (*http.Request, error) {
 	if c.config.OrgID != "" {
 		req.Header.Set("OpenAI-Organization", c.config.OrgID)
 	}
+	if c.config.ProjectID != "" {
+		req.Header.Set("OpenAI-Project", c.config.ProjectID)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	return req, nil
 }
