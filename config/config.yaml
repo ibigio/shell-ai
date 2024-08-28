@@ -6,6 +6,7 @@ models:
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
+    project_env_var: OPENAI_PROJECT_ID
     prompt:
       [
         {
@@ -20,6 +21,7 @@ models:
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
+    project_env_var: OPENAI_PROJECT_ID
     prompt:
       [
         {
@@ -34,6 +36,7 @@ models:
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
+    project_env_var: OPENAI_PROJECT_ID
     prompt:
       [
         {

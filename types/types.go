@@ -5,6 +5,7 @@ type ModelConfig struct {
 	Endpoint  string    `yaml:"endpoint"`
 	Auth      string    `yaml:"auth_env_var"`
 	OrgID     string    `yaml:"org_env_var,omitempty"`
+	ProjectID string    `yaml:"project_env_var,omitempty"`
 	Prompt    []Message `yaml:"prompt"`
 }
 
