@@ -4,9 +4,9 @@ preferences:
 models:
   - name: gpt-4
     endpoint: https://api.openai.com/v1/chat/completions
-    auth_env_var: OPENAI_API_KEY
-    org_env_var: OPENAI_ORG_ID
-    project_env_var: OPENAI_PROJECT_ID
+    api_key: ${OPENAI_API_KEY}
+    org_id: ${OPENAI_ORG_ID}
+    project_id: ${OPENAI_PROJECT_ID}
     prompt:
       [
         {
@@ -19,9 +19,9 @@ models:
 
   - name: gpt-4-1106-preview
     endpoint: https://api.openai.com/v1/chat/completions
-    auth_env_var: OPENAI_API_KEY
-    org_env_var: OPENAI_ORG_ID
-    project_env_var: OPENAI_PROJECT_ID
+    api_key: ${OPENAI_API_KEY}
+    org_id: ${OPENAI_ORG_ID}
+    project_id: ${OPENAI_PROJECT_ID}
     prompt:
       [
         {
@@ -34,9 +34,9 @@ models:
 
   - name: gpt-3.5-turbo
     endpoint: https://api.openai.com/v1/chat/completions
-    auth_env_var: OPENAI_API_KEY
-    org_env_var: OPENAI_ORG_ID
-    project_env_var: OPENAI_PROJECT_ID
+    api_key: ${OPENAI_API_KEY}
+    org_id: ${OPENAI_ORG_ID}
+    project_id: ${OPENAI_PROJECT_ID}
     prompt:
       [
         {
@@ -52,4 +52,4 @@ models:
         { role: "assistant", content: "```bash\necho \"hi\"\n```" },
       ]
 
-config_format_version: "1"
+config_format_version: "2"

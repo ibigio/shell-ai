@@ -125,8 +125,9 @@ preferences:
 models:
   - name: gpt-4-1106-preview
     endpoint: https://api.openai.com/v1/chat/completions
-    auth_env_var: OPENAI_API_KEY
-    org_env_var: OPENAI_ORG_ID
+    api_key: ${OPENAI_API_KEY}
+    org_id: ${OPENAI_ORG_ID}
+    project_id: ${OPENAI_PROJECT_ID}
     prompt:
       [
         {
@@ -141,7 +142,7 @@ models:
 config_format_version: "1"
 ````
 
-**Note:** The `auth_env_var` is set to `OPENAI_API_KEY` verbatim, not the key itself, so as to not keep sensitive information in the config file.
+**Note:** The `api_key` references an environment variable by default, not the key itself.
 
 ### Setting Up a Local Model
 
@@ -163,8 +164,9 @@ Here's what I did:
 models:
   - name: stablelm-zephyr-3b.Q8_0
     endpoint: http://127.0.0.1:8080/v1/chat/completions
-    auth_env_var: OPENAI_API_KEY
-    org_env_var: OPENAI_ORG_ID
+    api_key: ${OPENAI_API_KEY}
+    org_id: ${OPENAI_ORG_ID}
+    project_id: ${OPENAI_PROJECT_ID}
     prompt:
       - role: system
         content:
@@ -212,7 +214,7 @@ Define `AZURE_OPENAI_API_KEY` environment variable and make few changes to the c
 models:
   - name: azure-gpt-4
     endpoint: https://<resource_name>.openai.azure.com/openai/deployments/<deployment_name>/chat/completions?api-version=<api_version>
-    auth_env_var: AZURE_OPENAI_API_KEY
+    api_key: ${AZURE_OPENAI_API_KEY}
 ```
 
 ### I Fucked Up The Config File
