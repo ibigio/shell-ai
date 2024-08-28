@@ -40,13 +40,19 @@ func (c *LLMClient) createRequest(payload Payload) (*http.Request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+	apiKey := c.config.ApiKey.Resolve()
 	if strings.Contains(c.config.Endpoint, "openai.azure.com") {
-		req.Header.Set("Api-Key", c.config.Auth)
+		req.Header.Set("Api-Key", apiKey)
 	} else {
-		req.Header.Set("Authorization", "Bearer "+c.config.Auth)
+		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
-	if c.config.OrgID != "" {
-		req.Header.Set("OpenAI-Organization", c.config.OrgID)
+	orgID := c.config.OrgID.Resolve()
+	if orgID != "" {
+		req.Header.Set("OpenAI-Organization", orgID)
+	}
+	projectID := c.config.ProjectID.Resolve()
+	if projectID != "" {
+		req.Header.Set("OpenAI-Project", projectID)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	return req, nil

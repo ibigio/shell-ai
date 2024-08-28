@@ -1,11 +1,43 @@
 package types
 
+import (
+	"fmt"
+	"os"
+)
+
+type ValueOrVar string
+
+func (v ValueOrVar) Raw() string {
+	return string(v)
+}
+
+func (v ValueOrVar) Resolve() string {
+	return os.ExpandEnv(string(v))
+}
+
 type ModelConfig struct {
-	ModelName string    `yaml:"name"`
-	Endpoint  string    `yaml:"endpoint"`
-	Auth      string    `yaml:"auth_env_var"`
-	OrgID     string    `yaml:"org_env_var,omitempty"`
-	Prompt    []Message `yaml:"prompt"`
+	ModelName string     `yaml:"name"`
+	Endpoint  string     `yaml:"endpoint"`
+	ApiKey    ValueOrVar `yaml:"api_key,omitempty"`
+	OrgID     ValueOrVar `yaml:"org_id,omitempty"`
+	ProjectID ValueOrVar `yaml:"project_id,omitempty"`
+	Prompt    []Message  `yaml:"prompt"`
+	// deprecated var-only keys
+	V1_Auth      string `yaml:"auth_env_var,omitempty"`
+	V1_OrgID     string `yaml:"org_env_var,omitempty"`
+	V1_ProjectID string `yaml:"project_env_var,omitempty"`
+}
+
+func (c ModelConfig) Migrate() ModelConfig {
+	c.ApiKey = ValueOrVar(fmt.Sprintf("${%s}", c.V1_Auth))
+	c.V1_Auth = ""
+
+	c.OrgID = ValueOrVar(fmt.Sprintf("${%s}", c.V1_OrgID))
+	c.V1_OrgID = ""
+
+	c.ProjectID = ValueOrVar("${OPENAI_PROJECT_ID}")
+
+	return c
 }
 
 type Message struct {

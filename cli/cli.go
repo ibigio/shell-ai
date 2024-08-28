@@ -8,6 +8,7 @@ import (
 	. "q/types"
 	"q/util"
 
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -295,24 +296,25 @@ func initialModel(prompt string, client *llm.LLMClient) model {
 
 // === Main === //
 
+var envVarNameRegex = regexp.MustCompile(`\$\{?([a-zA-Z_][a-zA-Z0-9_]*)\}?`)
+
 func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
-	auth := modelConfig.Auth
+	auth := modelConfig.ApiKey.Raw()
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 	)
-
-	profileScriptName := ".zshrc or.bashrc"
-	shellSyntax := "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
-	if runtime.GOOS == "windows" {
-		profileScriptName = "$profile"
-		shellSyntax = "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
-	}
-
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 
-	switch auth {
-	case "OPENAI_API_KEY":
-		msg1 := styleRed.Render("OPENAI_API_KEY environment variable not set.")
+	if envVarNameRegex.MatchString(auth) {
+		varName := envVarNameRegex.ReplaceAllString(auth, "$1")
+		profileScriptName := ".zshrc or.bashrc"
+		shellSyntax := fmt.Sprintf("\n```bash\nexport %s=[your key]\n```", varName)
+		if runtime.GOOS == "windows" {
+			profileScriptName = "$profile"
+			shellSyntax = fmt.Sprintf("\n```powershell\n$env:%s = \"[your key]\"\n```", varName)
+		}
+
+		msg1 := styleRed.Render(fmt.Sprintf("%s environment variable not set.", varName))
 
 		// make it platform agnostic
 		message_string := fmt.Sprintf(`
@@ -324,8 +326,8 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 
 		msg2, _ := r.Render(message_string)
 		fmt.Printf("\n  %v%v\n", msg1, msg2)
-	default:
-		msg := styleRed.Render(auth + " environment variable not set.")
+	} else {
+		msg := styleRed.Render("api_key value not set in config.")
 		fmt.Printf("\n  %v", msg)
 	}
 }
@@ -357,22 +359,18 @@ func runQProgram(prompt string) {
 	}
 
 	modelConfig, err := getModelConfig(appConfig)
+
 	if err != nil {
 		config.PrintConfigErrorMessage(err)
 		os.Exit(1)
 	}
-	auth := os.Getenv(modelConfig.Auth)
-	if auth == "" || os.Getenv(modelConfig.Auth) == "" {
+	if modelConfig.ApiKey.Resolve() == "" {
 		printAPIKeyNotSetMessage(modelConfig)
 		os.Exit(1)
 	}
 	// everything checks out, save the config
 	// TODO: maybe add a validating function
 	config.SaveAppConfig(appConfig)
-
-	orgID := os.Getenv(modelConfig.OrgID)
-	modelConfig.Auth = auth
-	modelConfig.OrgID = orgID
 
 	c := llm.NewLLMClient(modelConfig)
 	p := tea.NewProgram(initialModel(prompt, c))

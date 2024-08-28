@@ -399,10 +399,7 @@ func modelDetailsForModelMenu(appConfig AppConfig, modelConfig types.ModelConfig
 			title: "Endpoint: " + modelConfig.Endpoint,
 		},
 		{
-			title: "Auth: " + modelConfig.Auth,
-		},
-		{
-			title: "Auth: " + modelConfig.Auth,
+			title: "Auth: " + modelConfig.ApiKey.Raw(),
 		},
 		{
 			title: "Prompt",

@@ -96,6 +96,12 @@ func loadExistingConfig(filePath string) (AppConfig, error) {
 	if err != nil {
 		return config, fmt.Errorf("error unmarshalling config file: %s", err)
 	}
+	if config.Version == "1" {
+		for i, modelCfg := range config.Models {
+			config.Models[i] = modelCfg.Migrate()
+		}
+		config.Version = "2"
+	}
 	return config, nil
 }
 
