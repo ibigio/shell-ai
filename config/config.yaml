@@ -1,5 +1,5 @@
 preferences:
-  default_model: gpt-4-1106-preview
+  default_model: gpt-4o
 
 models:
   - name: gpt-4
@@ -7,46 +7,27 @@ models:
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
     prompt:
-      [
-        {
-          role: "system",
-          content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well.",
-        },
-        { role: "user", content: "print hi" },
-        { role: "assistant", content: "```bash\necho \"hi\"\n```" },
-      ]
+      - role: system
+        content: You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well. Consider when the user request references a previous request.
+      - role: user
+        content: print hi
+      - role: assistant
+        content: "```bash\necho \"hi\"\n```"
 
-  - name: gpt-4-1106-preview
+  - name: gpt-4o-mini
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
     prompt:
-      [
-        {
-          role: "system",
-          content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well.",
-        },
-        { role: "user", content: "print hi" },
-        { role: "assistant", content: "```bash\necho \"hi\"\n```" },
-      ]
-
-  - name: gpt-3.5-turbo
-    endpoint: https://api.openai.com/v1/chat/completions
-    auth_env_var: OPENAI_API_KEY
-    org_env_var: OPENAI_ORG_ID
-    prompt:
-      [
-        {
-          role: "system",
-          content: "You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the question the users asks. Do not add explanations for your code. Do not output any non-code words at all. Just output the code. Short is better. However, if the user is clearly asking a general question then answer it very briefly and well.",
-        },
-        { role: "user", content: "get the current time from some website" },
-        {
-          role: "assistant",
-          content: "```bash\ncurl -s http://worldtimeapi.org/api/ip | jq '.datetime'\n```",
-        },
-        { role: "user", content: "print hi" },
-        { role: "assistant", content: "```bash\necho \"hi\"\n```" },
-      ]
+      - role: system
+        content: You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. DO NOT OUTPUT ADDITIONAL REMARKS ABOUT THE CODE YOU OUTPUT. Do not repeat the question the users asks. Do not add explanations for your code. Do not output any non-code words at all. Just output the code. Short is better. However, if the user is clearly asking a general question then answer it very briefly and well. Consider when the user request references a previous request.
+      - role: user
+        content: get the current time from some website
+      - role: assistant
+        content: "```bash\ncurl -s http://worldtimeapi.org/api/ip | jq '.datetime'\n```"
+      - role: user
+        content: print hi
+      - role: assistant
+        content: "```bash\necho \"hi\"\n```"
 
 config_format_version: "1"
