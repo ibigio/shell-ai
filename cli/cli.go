@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -214,6 +215,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleKeyEnter()
 		}
 
+	case tea.FocusMsg:
+		m.textInput.Cursor.SetMode(cursor.CursorBlink)
+		return m, nil
+
+	case tea.BlurMsg:
+		m.textInput.Cursor.SetMode(cursor.CursorHide)
+		return m, nil
+
 	case responseMsg:
 		return m.handleResponseMsg(msg)
 
@@ -375,7 +384,7 @@ func runQProgram(prompt string) {
 	modelConfig.OrgID = orgID
 
 	c := llm.NewLLMClient(modelConfig)
-	p := tea.NewProgram(initialModel(prompt, c))
+	p := tea.NewProgram(initialModel(prompt, c), tea.WithReportFocus())
 	c.StreamCallback = streamHandler(p)
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
