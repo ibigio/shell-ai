@@ -17,6 +17,7 @@ import (
 )
 
 const listHeight = 12
+const defaultWidth = 20
 
 var (
 	styleRed          = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
@@ -254,18 +255,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case setMenuMsg:
 		m.backstack = append(m.backstack, m.state)
-		m.list = msg.menu(m.appConfig)
 		m.state = state{page: ListPage, menu: msg.menu}
+		m.list = msg.menu(m.appConfig)
+		return m, nil
 
 	case setDefaultModelMsg:
 		m.appConfig.Preferences.DefaultModel = msg.model
-		// fmt.Println("Config:", m.appConfig.Preferences.DefaultModel)
+		m.dirty = true
 		return m, tea.Sequence(saveConfig(m.appConfig), back())
 
+	case configSavedMsg:
+		m.list = m.state.menu(m.appConfig)
+		return m, nil
+
 	case editorFinishedMsg:
-		if msg.err != nil {
-			return m, tea.Quit
-		}
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -322,44 +326,68 @@ func defaultList(title string, items []menuItem) list.Model {
 // func (m menuModel)
 
 func mainMenu(appConfig AppConfig) list.Model {
-	items := []menuItem{
-		{
-			title:     "Change Default Model",
-			data:      appConfig.Preferences.DefaultModel,
-			selectCmd: setMenu(defaultModelSelectMenu),
-		},
-		{
+	items := []list.Item{
+		menuItem{
 			title:     "Edit Config File",
-			data:      "~/.shell-ai/config.yaml",
+			data:      "(~/.shell-ai/config.yaml)",
 			selectCmd: openEditor(),
 		},
-		{
+		menuItem{
+			title: "Change Default Model",
+			data:  appConfig.Preferences.DefaultModel,
+			selectCmd: setMenu(modelSelectMenu),
+		},
+		menuItem{
 			title:     "Configure Models",
 			selectCmd: setMenu(configureModelsMenu),
 		},
-		{
+		menuItem{
 			title:     "Contribute",
-			selectCmd: openBrowser("https://github.com/ibigio/shell-ai#contributing"),
+			selectCmd: openGithubRepo(),
 		},
-		{
-			title:     "Quit",
-			data:      "esc",
+		menuItem{
+			title:     "Quit (esc)",
 			selectCmd: quit(),
 		},
 	}
-	return defaultList("ShellAI Config", items)
+
+	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+	l.Title = "ShellAI Configuration"
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
+	l.Styles.Title = titleStyle
+	l.Styles.PaginationStyle = paginationStyle
+	l.Styles.HelpStyle = helpStyle
+	l.SetShowHelp(false)
+	return l
 }
 
-func defaultModelSelectMenu(appConfig AppConfig) list.Model {
-	var modelItems []menuItem
-	for _, model := range appConfig.Models {
-		model := model
-		modelItems = append(modelItems, menuItem{
-			title:     model.ModelName,
-			selectCmd: tea.Sequence(setDefaultModel(model.ModelName), back()),
+func modelSelectMenu(appConfig AppConfig) list.Model {
+	items := []list.Item{}
+	for _, m := range appConfig.Models {
+		items = append(items, menuItem{
+			title: m.ModelName,
+			selectCmd: setDefaultModel(m.ModelName),
 		})
 	}
-	return defaultList("Choose Default Model", modelItems)
+
+	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+	l.Title = "Select Default Model"
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
+	l.Styles.Title = titleStyle
+	l.Styles.PaginationStyle = paginationStyle
+	l.Styles.HelpStyle = helpStyle
+
+	for i, item := range items {
+		menuItem := item.(menuItem)
+		if menuItem.title == appConfig.Preferences.DefaultModel {
+			l.Select(i)
+			break
+		}
+	}
+
+	return l
 }
 
 func configureModelsMenu(appConfig AppConfig) list.Model {
