@@ -76,15 +76,15 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 	}
 	v := m.textInput.Value()
 
-	// No input, copy and quit.
 	if v == "" {
 		if m.latestCommandResponse == "" {
 			return m, tea.Quit
 		}
 		err := clipboard.WriteAll(m.latestCommandResponse)
 		if err != nil {
-			fmt.Println("Failed to copy text to clipboard:", err)
-			return m, tea.Quit
+			// Print a user-friendly message about missing clipboard utilities
+			clipboardErrMsg := "Error: Failed to copy to clipboard. Please install 'xclip', 'xsel', or 'wl-clipboard' depending on your system."
+			return m, tea.Sequence(tea.Printf(clipboardErrMsg), tea.Quit)
 		}
 		placeholderStyle := lipgloss.NewStyle().Faint(true)
 		message := "Copied to clipboard."
@@ -94,7 +94,7 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 		message = placeholderStyle.Render(message)
 		return m, tea.Sequence(tea.Printf("%s", message), tea.Quit)
 	}
-	// Input, run query.
+
 	m.textInput.SetValue("")
 	m.query = v
 	m.state = Loading
@@ -105,18 +105,15 @@ func (m model) handleKeyEnter() (tea.Model, tea.Cmd) {
 
 func (m model) formatResponse(response string, isCode bool) (string, error) {
 
-	// format nicely
 	formatted, err := m.markdownRenderer.Render(response)
 	if err != nil {
 		// TODO: handle error
 		panic(err)
 	}
 
-	// trim preceding and trailing newlines
 	formatted = strings.TrimPrefix(formatted, "\n")
 	formatted = strings.TrimSuffix(formatted, "\n")
 
-	// Add newline for non-code blocks (hacky)
 	if !isCode {
 		formatted = "\n" + formatted
 	}
@@ -129,32 +126,46 @@ func (m model) getConnectionError(err error) string {
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	styleGreen := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	styleDim := lipgloss.NewStyle().Faint(true).Width(m.maxWidth).PaddingLeft(2)
+
+	providerName := "API"
+	if m.client != nil && m.client.GetProvider() != nil {
+		providerName = strings.ToUpper(m.client.GetProvider().GetProviderName())
+	}
+
 	message := fmt.Sprintf("\n  %v\n\n%v\n",
-		styleRed.Render("Error: Failed to connect to OpenAI."),
+		styleRed.Render(fmt.Sprintf("Error: Failed to connect to %s.", providerName)),
 		styleDim.Render(err.Error()))
-	if util.IsLikelyBillingError(err.Error()) {
+
+	if providerName == "OPENAI" && util.IsLikelyBillingError(err.Error()) {
 		message = fmt.Sprintf("%v\n  %v %v\n\n  %v%v\n\n",
 			message,
 			styleGreen.Render("Hint:"),
-			"You may need to set up billing. You can do so here:",
+			"You may need to set up OpenAI billing. You can do so here:",
 			styleGreen.Render("->"),
 			styleDim.Render("https://platform.openai.com/account/billing"),
 		)
+	} else if providerName == "GEMINI" {
+		message = fmt.Sprintf("%v\n  %v %v\n\n  %v%v\n",
+			message,
+			styleGreen.Render("Hint:"),
+			"Ensure the Generative Language API is enabled in your Google Cloud project and the API key is valid.",
+			styleGreen.Render("->"),
+			styleDim.Render("https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com"),
+		)
 	}
+
 	return message
 }
 
 func (m model) handleResponseMsg(msg responseMsg) (tea.Model, tea.Cmd) {
 	m.formattedPartialResponse = ""
 
-	// error handling
 	if msg.err != nil {
 		m.state = RecevingInput
 		message := m.getConnectionError(msg.err)
 		return m, tea.Sequence(tea.Printf("%s", message), textinput.Blink)
 	}
 
-	// parse out the code block
 	content, isOnlyCode := util.ExtractFirstCodeBlock(msg.response)
 	if content != "" {
 		m.latestCommandResponse = content
@@ -228,7 +239,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, nil
 	}
-	// Update spinner or cursor.
+
 	switch m.state {
 	case Loading:
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -296,38 +307,55 @@ func initialModel(prompt string, client *llm.LLMClient) model {
 // === Main === //
 
 func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
-	auth := modelConfig.Auth
+	authEnvVar := modelConfig.Auth
+	provider := modelConfig.Provider
+	if provider == "" {
+		provider = "openai"
+	}
+	provider = strings.ToUpper(provider)
+
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 	)
 
-	profileScriptName := ".zshrc or.bashrc"
-	shellSyntax := "\n```bash\nexport OPENAI_API_KEY=[your key]\n```"
+	profileScriptName := ".zshrc or .bashrc"
+	shellSyntax := fmt.Sprintf("\n```bash\nexport %s=[your key]\n```", authEnvVar)
+	windowsShellSyntax := fmt.Sprintf("\n```powershell\n$env:%s = \"[your key]\"\n```", authEnvVar)
+
 	if runtime.GOOS == "windows" {
 		profileScriptName = "$profile"
-		shellSyntax = "\n```powershell\n$env:OPENAI_API_KEY = \"[your key]\"\n```"
+		shellSyntax = windowsShellSyntax
 	}
 
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	msg1 := styleRed.Render(fmt.Sprintf("%s environment variable not set.", authEnvVar))
 
-	switch auth {
-	case "OPENAI_API_KEY":
-		msg1 := styleRed.Render("OPENAI_API_KEY environment variable not set.")
-
-		// make it platform agnostic
-		message_string := fmt.Sprintf(`
+	var instructions string
+	switch provider {
+	case "OPENAI":
+		instructions = fmt.Sprintf(`
 	1. Generate your API key at https://platform.openai.com/account/api-keys
 	2. Add your credit card in the API (for the free trial)
 	3. Set your key by running:
 	%s
 	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
-
-		msg2, _ := r.Render(message_string)
-		fmt.Printf("\n  %v%v\n", msg1, msg2)
+	case "GEMINI":
+		instructions = fmt.Sprintf(`
+	1. Create an API key in your Google Cloud project: https://console.cloud.google.com/apis/credentials
+	2. Ensure the Generative Language API is enabled: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com
+	3. Set your key by running:
+	%s
+	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
 	default:
-		msg := styleRed.Render(auth + " environment variable not set.")
-		fmt.Printf("\n  %v", msg)
+		instructions = fmt.Sprintf(`
+	1. Obtain your API key for %s.
+	2. Set your key by running:
+	%s
+	3. (Recommended) Add that ^ line to your %s file.`, provider, shellSyntax, profileScriptName)
 	}
+
+	msg2, _ := r.Render(instructions)
+	fmt.Printf("\n  %v%v\n", msg1, msg2)
 }
 
 func streamHandler(p *tea.Program) func(content string, err error) {
@@ -345,7 +373,6 @@ func getModelConfig(appConfig config.AppConfig) (ModelConfig, error) {
 			return model, nil
 		}
 	}
-	// If the preferred model is not found, return the first model
 	return appConfig.Models[0], nil
 }
 
@@ -361,17 +388,16 @@ func runQProgram(prompt string) {
 		config.PrintConfigErrorMessage(err)
 		os.Exit(1)
 	}
-	auth := os.Getenv(modelConfig.Auth)
-	if auth == "" || os.Getenv(modelConfig.Auth) == "" {
+
+	config.SaveAppConfig(appConfig)
+
+	authToken := os.Getenv(modelConfig.Auth)
+	if authToken == "" {
 		printAPIKeyNotSetMessage(modelConfig)
 		os.Exit(1)
 	}
-	// everything checks out, save the config
-	// TODO: maybe add a validating function
-	config.SaveAppConfig(appConfig)
 
 	orgID := os.Getenv(modelConfig.OrgID)
-	modelConfig.Auth = auth
 	modelConfig.OrgID = orgID
 
 	c := llm.NewLLMClient(modelConfig)
@@ -387,7 +413,6 @@ var RootCmd = &cobra.Command{
 	Use:   "q [request]",
 	Short: "A command line interface for natural language queries",
 	Run: func(cmd *cobra.Command, args []string) {
-		// join args into a single string separated by spaces
 		prompt := strings.Join((args), " ")
 		if len(args) > 0 && args[0] == "config" {
 			config.RunConfigProgram(args)
