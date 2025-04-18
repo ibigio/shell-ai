@@ -18,7 +18,7 @@ builds:
 brews:
   - name: shell-ai
     homepage: "https://github.com/ibigio/shell-ai"
-    tap:
+    repository:
       owner: ibigio
       name: homebrew-tap
     commit_author:
