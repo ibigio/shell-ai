@@ -1,8 +1,8 @@
 preferences:
-  default_model: gpt-4.1
 
 models:
   - name: gpt-4.1
+    provider: openai
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
@@ -15,6 +15,7 @@ models:
         content: "```bash\necho \"hi\"\n```"
 
   - name: gpt-4.1-mini
+    provider: openai
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
@@ -25,6 +26,18 @@ models:
         content: get the current time from some website
       - role: assistant
         content: "```bash\ncurl -s http://worldtimeapi.org/api/ip | jq '.datetime'\n```"
+      - role: user
+        content: print hi
+      - role: assistant
+        content: "```bash\necho \"hi\"\n```"
+
+  - name: gemini-2.0-flash
+    provider: gemini
+    endpoint: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+    auth_env_var: GOOGLE_API_KEY
+    prompt:
+      - role: system
+        content: You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well. Consider when the user request references a previous request.
       - role: user
         content: print hi
       - role: assistant
