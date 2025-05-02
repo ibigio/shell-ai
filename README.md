@@ -150,7 +150,7 @@ As a proof of concept I set up `stablelm-zephyr-3b.Q8_0` on my MacBook Pro (16GB
 Here's what I did:
 
 1. I cloned and set up `llama.cpp` ([repo](https://github.com/ggerganov/llama.cpp)). (Just follow the instructions.)
-2. Then I downloaded the (`stablelm-zephyr-3b.Q8_0`)[https://huggingface.co/TheBloke/stablelm-zephyr-3b-GGUF/blob/main/stablelm-zephyr-3b.Q8_0.gguf] GGUF [from hugging face](https://huggingface.co/TheBloke/stablelm-zephyr-3b-GGUF) (thanks, TheBloke) and saved it under `llama.cpp/models/`.
+2. Then I downloaded the [`stablelm-zephyr-3b.Q8_0`](https://huggingface.co/TheBloke/stablelm-zephyr-3b-GGUF/blob/main/stablelm-zephyr-3b.Q8_0.gguf) GGUF [from hugging face](https://huggingface.co/TheBloke/stablelm-zephyr-3b-GGUF) (thanks, TheBloke) and saved it under `llama.cpp/models/`.
 3. Then I ran the model in server mode with chat syntax (from `llama.cpp/`):
 
 ```bash
