@@ -16,7 +16,7 @@ A delightfully minimal, yet remarkably powerful AI Shell Assistant.
 
 # About
 
-For developers, referencing things online is inevitable – but one can only look up "how to do [X] in git" so many times before losing your mind.
+For developers, referencing things online is inevitable – but one can only look up "how to do [X] in git" so many times before losing your mind.
 
 <p align="center">
   <img src="https://imgs.xkcd.com/comics/tar.png">
@@ -31,14 +31,93 @@ _New: ShellAI now supports local models! See [Custom Model Configuration](#custo
 ### Homebrew
 
 ```bash
-brew tap ibigio/tap
+brew tap erfannf/tap
 brew install shell-ai
 ```
 
-### Linux
+### Linux/macOS
 
 ```bash
-curl https://raw.githubusercontent.com/ibigio/shell-ai/main/install.sh | bash
+curl https://raw.githubusercontent.com/erfannf/shell-ai/main/install.sh | bash
+```
+
+### Windows
+
+```powershell
+Invoke-RestMethod -Uri https://raw.githubusercontent.com/erfannf/shell-ai/main/install.ps1 | powershell -Command -
+```
+
+### SSH Session Requirements
+
+If you're using ShellAI over an SSH session, you'll need to install clipboard utilities for the copy functionality to work:
+
+- **On Debian/Ubuntu-based systems**:
+  ```bash
+  sudo apt-get install xsel xclip
+  ```
+
+- **On Fedora/RHEL-based systems**:
+  ```bash
+  sudo dnf install xsel xclip
+  ```
+
+- **On Arch Linux**:
+  ```bash
+  sudo pacman -S xsel xclip
+  ```
+
+- **For Wayland users**:
+  ```bash
+  sudo apt-get install wl-clipboard  # Debian/Ubuntu
+  sudo dnf install wl-clipboard      # Fedora
+  sudo pacman -S wl-clipboard        # Arch
+  ```
+
+- **For Termux users**:
+  ```bash
+  pkg install termux-api
+  ```
+
+Without these utilities, you'll see an error when attempting to copy text to clipboard.
+
+#### TTY Session Type Compatibility
+
+Clipboard functionality depends on your terminal session type:
+
+- **Local terminal sessions**: Clipboard should work without additional configuration.
+- **X11 forwarding**: Use `ssh -X` or `ssh -Y` to connect to your server to enable clipboard sharing between the server and your local machine.
+  ```bash
+  ssh -X user@host
+  ```
+- **SSH without X forwarding**: Clipboard functionality will be limited to the remote server's clipboard only, not your local machine.
+- **TTY sessions (no GUI)**: Clipboard functionality won't work as these sessions don't have access to a GUI clipboard.
+- **tmux/screen sessions**: May require additional configuration:
+  ```bash
+  # For tmux, ensure this in your ~/.tmux.conf
+  set -g set-clipboard on
+  ```
+
+If you're accessing a remote server and need to copy command output to your local machine, consider piping to a file and using `scp` or `rsync` to transfer it.
+
+# Uninstall
+
+### Homebrew
+
+```bash
+brew uninstall shell-ai
+brew untap erfannf/tap
+```
+
+### Linux/macOS
+
+```bash
+rm -f /usr/local/bin/q
+```
+
+### Windows
+
+```powershell
+Remove-Item -Path "$env:LOCALAPPDATA\Programs\shell-ai\q.exe" -Force
 ```
 
 # Usage
@@ -58,13 +137,43 @@ Type `q` followed by a description of a shell command, code snippet, or general 
 
 ### Configuration
 
-Set your [OpenAI API key](https://platform.openai.com/account/api-keys).
+#### Setting up API keys
+
+Set your [OpenAI API key](https://platform.openai.com/account/api-keys):
 
 ```bash
-export OPENAI_API_KEY=[your key]
+export OPENAI_API_KEY="your-api-key-here"
 ```
 
-For more options (like setting the default model), run:
+For persistent configuration, add the export command to your shell profile:
+
+- **Bash users** - Add to `~/.bashrc` or `~/.bash_profile`:
+  ```bash
+  echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+- **Zsh users** - Add to `~/.zshrc`:
+  ```bash
+  echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.zshrc
+  source ~/.zshrc
+  ```
+
+- **Fish users** - Add to `~/.config/fish/config.fish`:
+  ```fish
+  set -Ux OPENAI_API_KEY "your-api-key-here"
+  ```
+
+- **Windows PowerShell users** - Add to your PowerShell profile:
+  ```powershell
+  [Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "your-api-key-here", "User")
+  ```
+
+> **Important:** Never include the square brackets when setting your API key. Use the format `export OPENAI_API_KEY="sk-abcd1234"` not `export OPENAI_API_KEY=[sk-abcd1234]`.
+
+#### Changing default model
+
+For more configuration options (like setting the default model), run:
 
 ```bash
 q config
@@ -118,7 +227,7 @@ You can now configure model prompts and even add your own model setups in the `~
 
 ### Config File Syntax
 
-````yaml
+```yaml
 preferences:
   default_model: gpt-4-1106-preview
 
@@ -139,7 +248,7 @@ models:
     # other models ...
 
 config_format_version: "1"
-````
+```
 
 **Note:** The `auth_env_var` is set to `OPENAI_API_KEY` verbatim, not the key itself, so as to not keep sensitive information in the config file.
 
@@ -159,7 +268,7 @@ Here's what I did:
 
 4. Finally I added the new `model` config to my `~/.shell-ai/config.yaml`, and wrestled with the prompt until it worked – bet you can do better. (As you can see, YAML is [flexible](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html).)
 
-````yaml
+```yaml
 models:
   - name: stablelm-zephyr-3b.Q8_0
     endpoint: http://127.0.0.1:8080/v1/chat/completions
@@ -191,7 +300,7 @@ models:
           ```
 
 # other models ...
-````
+```
 
 and also updated the default model (which you can also do from `q config`):
 
@@ -203,6 +312,37 @@ preferences:
 And huzzah! You can now use ShellAI on a plane.
 
 (Fun fact, I implemented a good bit of the initial config TUI on a plane using this exact local model.)
+
+### Setting Up DeepSeek Models
+
+ShellAI now supports DeepSeek's powerful LLMs via their API. To use DeepSeek models:
+
+1. Create an account at [DeepSeek Platform](https://platform.deepseek.com)
+2. Generate an API key at https://platform.deepseek.com/api_keys
+3. Set your DeepSeek API key as an environment variable:
+
+```bash
+# For Linux/macOS (temporary)
+export DEEPSEEK_API_KEY="your-api-key-here"
+
+# For permanent setup on Linux/macOS
+echo 'export DEEPSEEK_API_KEY="your-api-key-here"' >> ~/.bashrc  # for bash
+# or
+echo 'export DEEPSEEK_API_KEY="your-api-key-here"' >> ~/.zshrc   # for zsh
+
+# For Windows (PowerShell)
+$env:DEEPSEEK_API_KEY = "your-api-key-here"  # temporary
+# For permanent setup on Windows
+[Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", "your-api-key-here", "User")
+```
+
+> **Important:** Do not include square brackets around your API key. The correct format is `export DEEPSEEK_API_KEY="your-key"`, not `export DEEPSEEK_API_KEY=[your-key]`.
+
+4. Run `q config` and select "Change Default Model" to switch to one of the DeepSeek models:
+   - `deepseek-chat`: General-purpose conversational model
+   - `deepseek-coder`: Specialized for code and programming tasks
+
+The DeepSeek models are already configured in ShellAI, so you don't need to modify your config file manually.
 
 ### Setting Up Azure OpenAI endpoint
 

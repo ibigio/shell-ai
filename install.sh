@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Replace these values with your tool's information:
-REPO_OWNER="ibigio"
+REPO_OWNER="erfannf"
 REPO_NAME="shell-ai"
 TOOL_NAME="shell-ai"
 TOOL_SYMLINK="q"

@@ -129,18 +129,23 @@ func (m model) getConnectionError(err error) string {
 	styleRed := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	styleGreen := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	styleDim := lipgloss.NewStyle().Faint(true).Width(m.maxWidth).PaddingLeft(2)
+
+	// Create a more generic error message
+	errorMsg := "Error: Failed to connect to the API service."
+
 	message := fmt.Sprintf("\n  %v\n\n%v\n",
-		styleRed.Render("Error: Failed to connect to OpenAI."),
+		styleRed.Render(errorMsg),
 		styleDim.Render(err.Error()))
+
+	// Add information for rate limit errors
 	if util.IsLikelyBillingError(err.Error()) {
-		message = fmt.Sprintf("%v\n  %v %v\n\n  %v%v\n\n",
+		message = fmt.Sprintf("%v\n  %v %v\n\n",
 			message,
 			styleGreen.Render("Hint:"),
-			"You may need to set up billing. You can do so here:",
-			styleGreen.Render("->"),
-			styleDim.Render("https://platform.openai.com/account/billing"),
+			"You may have reached your rate limit. Check your API usage and billing status.",
 		)
 	}
+
 	return message
 }
 
@@ -321,6 +326,24 @@ func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
 	3. Set your key by running:
 	%s
 	4. (Recommended) Add that ^ line to your %s file.`, shellSyntax, profileScriptName)
+
+		msg2, _ := r.Render(message_string)
+		fmt.Printf("\n  %v%v\n", msg1, msg2)
+	case "DEEPSEEK_API_KEY":
+		msg1 := styleRed.Render("DEEPSEEK_API_KEY environment variable not set.")
+
+		deepseekSyntax := shellSyntax
+		if runtime.GOOS == "windows" {
+			deepseekSyntax = "\n```powershell\n$env:DEEPSEEK_API_KEY = \"[your key]\"\n```"
+		} else {
+			deepseekSyntax = "\n```bash\nexport DEEPSEEK_API_KEY=[your key]\n```"
+		}
+
+		message_string := fmt.Sprintf(`
+	1. Generate your API key at https://platform.deepseek.com/api_keys
+	2. Set your key by running:
+	%s
+	3. (Recommended) Add that ^ line to your %s file.`, deepseekSyntax, profileScriptName)
 
 		msg2, _ := r.Render(message_string)
 		fmt.Printf("\n  %v%v\n", msg1, msg2)

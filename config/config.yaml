@@ -29,5 +29,27 @@ models:
         content: print hi
       - role: assistant
         content: "```bash\necho \"hi\"\n```"
+        
+  - name: deepseek-chat
+    endpoint: https://api.deepseek.com/v1/chat/completions
+    auth_env_var: DEEPSEEK_API_KEY
+    prompt:
+      - role: system
+        content: You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well. Consider when the user request references a previous request.
+      - role: user
+        content: print hi
+      - role: assistant
+        content: "```bash\necho \"hi\"\n```"
+
+  - name: deepseek-coder
+    endpoint: https://api.deepseek.com/v1/chat/completions
+    auth_env_var: DEEPSEEK_API_KEY
+    prompt:
+      - role: system
+        content: You are a coding assistant. Always output code in a code block with the appropriate language tag. Provide concise solutions to coding problems. If explaining code, be brief. Consider when the user request references a previous request.
+      - role: user
+        content: write a recursive fibonacci function in python
+      - role: assistant
+        content: "```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    else:\n        return fibonacci(n-1) + fibonacci(n-2)\n```"
 
 config_format_version: "1"

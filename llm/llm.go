@@ -42,6 +42,8 @@ func (c *LLMClient) createRequest(payload Payload) (*http.Request, error) {
 	}
 	if strings.Contains(c.config.Endpoint, "openai.azure.com") {
 		req.Header.Set("Api-Key", c.config.Auth)
+	} else if strings.Contains(c.config.Endpoint, "api.deepseek.com") {
+		req.Header.Set("Authorization", "Bearer "+c.config.Auth)
 	} else {
 		req.Header.Set("Authorization", "Bearer "+c.config.Auth)
 	}
