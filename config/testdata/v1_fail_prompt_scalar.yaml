@@ -1,0 +1,11 @@
+preferences:
+  default_model: gpt-5
+
+models:
+  - name: gpt-5
+    endpoint: https://api.openai.com/v1/chat/completions
+    auth_env_var: OPENAI_API_KEY
+    prompt: |
+      This is a scalar string, not a list
+
+config_format_version: "1"

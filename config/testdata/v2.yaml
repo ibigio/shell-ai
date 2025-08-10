@@ -1,0 +1,50 @@
+You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well. Consider when the user request references a previous request.
+<example>
+<input>print hi</input>
+<output>```bash\necho \"hi\"\n```</output>
+</example>
+---
+preferences:
+  model: gpt-5
+  config: openai
+  reasoning_effort: minimal
+
+models:
+  - name: gpt-5
+  - name: gpt-5-mini
+  - name: gpt-4.1
+    config: azure
+    api_model: gpt-4.1
+
+configs:
+  openai:
+    endpoint: https://api.openai.com/v1/chat/completions
+    auth:
+      type: bearer
+      token_env: OPENAI_API_KEY
+    org_env_var: OPENAI_ORG_ID
+    org_header: OpenAI-Organization
+
+  azure:
+    endpoint: https://myres.openai.azure.com/openai/deployments/{model}/chat/completions
+    auth:
+      type: header
+      header: Api-Key
+      token_env: AZURE_OPENAI_API_KEY
+    query_params:
+      api-version: "2024-05-01-preview"
+
+  anthropic:
+    endpoint: https://api.anthropic.com/v1/messages
+    auth:
+      type: header
+      header: x-api-key
+      token_env: ANTHROPIC_API_KEY
+
+  deepseek:
+    endpoint: https://api.deepseek.com/v1/chat/completions
+    auth:
+      type: bearer
+      token_env: DEEPSEEK_API_KEY
+
+config_format_version: "2"
