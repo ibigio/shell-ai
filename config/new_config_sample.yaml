@@ -1,0 +1,36 @@
+system_prompt: |
+  You are a terminal assistant. Turn the natural language instructions into a terminal command. By default always only output code, and in a code block. However, if the user is clearly asking a question then answer it very briefly and well. Consider when the user request references a previous request.
+
+  <example>
+  <input>print hi</input>
+  <output>
+  ```bash
+  echo "hi"
+  ```
+  </output>
+  </example>
+
+preferences:
+  model: gpt-5 # default model name
+  # config: openai    # optional; built-in preset is used when omitted
+  reasoning_effort: minimal
+
+models:
+  - name: gpt-5
+
+# Optional provider overrides. Most users can omit this entire section.
+# Built-in presets exist for: openai, anthropic, ollama, azure-openai
+# Uncomment to customize a provider (example: Azure OpenAI):
+# configs:
+#   azure-openai:
+#     payload_style: openai
+#     endpoint: https://myres.openai.azure.com/openai/deployments/{name}/chat/completions
+#     auth:
+#       type: header
+#       header: Api-Key
+#       token_env: AZURE_OPENAI_API_KEY
+#     headers: {}
+#     query_params:
+#       api-version: "2024-05-01-preview"
+
+config_format_version: "2"

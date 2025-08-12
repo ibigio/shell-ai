@@ -142,6 +142,14 @@ func setDefaultModel(model string) tea.Cmd {
 	return func() tea.Msg { return setDefaultModelMsg{model} }
 }
 
+func saveDefaultModel(model string) tea.Cmd {
+	return func() tea.Msg {
+		_ = UpdateDefaultModel(model)
+		// we still return configSavedMsg to reuse existing flow
+		return configSavedMsg{}
+	}
+}
+
 // func saveConfig(appConfig AppConfig) tea.Cmd {
 // 	return func() tea.Msg {
 // 		return saveConfigMsg{}
@@ -258,9 +266,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = state{page: ListPage, menu: msg.menu}
 
 	case setDefaultModelMsg:
+		// Update in-memory for UI display (v1 struct here); persisted via UpdateDefaultModel
 		m.appConfig.Preferences.DefaultModel = msg.model
-		// fmt.Println("Config:", m.appConfig.Preferences.DefaultModel)
-		return m, tea.Sequence(saveConfig(m.appConfig), back())
+		return m, tea.Sequence(saveDefaultModel(msg.model), back())
 
 	case editorFinishedMsg:
 		if msg.err != nil {

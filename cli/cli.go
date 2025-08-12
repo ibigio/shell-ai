@@ -295,8 +295,8 @@ func initialModel(prompt string, client *llm.LLMClient) model {
 
 // === Main === //
 
-func printAPIKeyNotSetMessage(modelConfig ModelConfig) {
-	auth := modelConfig.Auth
+func printAPIKeyNotSetMessage(envVar string) {
+	auth := envVar
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithAutoStyle(),
 	)
@@ -336,6 +336,7 @@ func streamHandler(p *tea.Program) func(content string, err error) {
 	}
 }
 
+// Deprecated: legacy v1-only selector retained for menu plumbing; runtime uses unified resolver.
 func getModelConfig(appConfig config.AppConfig) (ModelConfig, error) {
 	if len(appConfig.Models) == 0 {
 		return ModelConfig{}, fmt.Errorf("no models available")
@@ -345,36 +346,29 @@ func getModelConfig(appConfig config.AppConfig) (ModelConfig, error) {
 			return model, nil
 		}
 	}
-	// If the preferred model is not found, return the first model
 	return appConfig.Models[0], nil
 }
 
 func runQProgram(prompt string) {
-	appConfig, err := config.LoadAppConfig()
+	// unified resolver handles v1 and v2 and validates env-vars
+	resolved, err := config.ResolveSelectedModel()
 	if err != nil {
-		config.PrintConfigErrorMessage(err)
+		// Friendly message for missing env var
+		if strings.Contains(err.Error(), "environment variable not set") {
+			// extract the var name
+			parts := strings.Split(err.Error(), " ")
+			if len(parts) > 0 {
+				printAPIKeyNotSetMessage(parts[0])
+			} else {
+				fmt.Printf("\n  %v\n", err)
+			}
+		} else {
+			config.PrintConfigErrorMessage(err)
+		}
 		os.Exit(1)
 	}
 
-	modelConfig, err := getModelConfig(appConfig)
-	if err != nil {
-		config.PrintConfigErrorMessage(err)
-		os.Exit(1)
-	}
-	auth := os.Getenv(modelConfig.Auth)
-	if auth == "" || os.Getenv(modelConfig.Auth) == "" {
-		printAPIKeyNotSetMessage(modelConfig)
-		os.Exit(1)
-	}
-	// everything checks out, save the config
-	// TODO: maybe add a validating function
-	config.SaveAppConfig(appConfig)
-
-	orgID := os.Getenv(modelConfig.OrgID)
-	modelConfig.Auth = auth
-	modelConfig.OrgID = orgID
-
-	c := llm.NewLLMClient(modelConfig)
+	c := llm.NewLLMClient(resolved)
 	p := tea.NewProgram(initialModel(prompt, c))
 	c.StreamCallback = streamHandler(p)
 	if _, err := p.Run(); err != nil {

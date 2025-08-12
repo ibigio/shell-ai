@@ -1,18 +1,20 @@
 package llm
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	. "q/types"
-	"strings"
 	"time"
+
+	"q/adapters"
+	anthropic "q/adapters/anthropic"
+	ollama "q/adapters/ollama"
+	openai "q/adapters/openai"
+	. "q/types"
 )
 
 type LLMClient struct {
-	config   ModelConfig
+	cfg      ResolvedModelConfig
+	adapter  adapters.Adapter
 	messages []Message
 
 	StreamCallback func(string, error)
@@ -20,108 +22,53 @@ type LLMClient struct {
 	httpClient *http.Client
 }
 
-func NewLLMClient(config ModelConfig) *LLMClient {
+func NewLLMClient(cfg ResolvedModelConfig) *LLMClient {
 	return &LLMClient{
-		config:   config,
-		messages: append([]Message(nil), config.Prompt...),
-
+		cfg:      cfg,
+		adapter:  pickAdapter(cfg.PayloadStyle),
+		messages: append([]Message(nil), cfg.Prompt...),
 		httpClient: &http.Client{
 			Timeout: time.Second * 120,
 		},
 	}
 }
 
-func (c *LLMClient) createRequest(payload Payload) (*http.Request, error) {
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+func pickAdapter(style string) adapters.Adapter {
+	switch style {
+	case "anthropic":
+		return anthropic.Adapter{}
+	case "ollama":
+		return ollama.Adapter{}
+	default:
+		return openai.Adapter{}
 	}
-	req, err := http.NewRequest("POST", c.config.Endpoint, bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	if strings.Contains(c.config.Endpoint, "openai.azure.com") {
-		req.Header.Set("Api-Key", c.config.Auth)
-	} else {
-		req.Header.Set("Authorization", "Bearer "+c.config.Auth)
-	}
-	if c.config.OrgID != "" {
-		req.Header.Set("OpenAI-Organization", c.config.OrgID)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	return req, nil
 }
 
 func (c *LLMClient) Query(query string) (string, error) {
-	messages := c.messages
-	messages = append(messages, Message{Role: "user", Content: query})
+	msgs := append([]Message(nil), c.messages...)
+	msgs = append(msgs, Message{Role: "user", Content: query})
 
-	payload := Payload{
-		Model:       c.config.ModelName,
-		Messages:    messages,
-		Temperature: 0,
-		Stream:      true,
-	}
-
-	message, err := c.callStream(payload)
+	req, err := c.adapter.BuildRequest(c.cfg, msgs)
 	if err != nil {
-		return "", err
-	}
-	c.messages = append(c.messages, message)
-	return message.Content, nil
-}
-
-func (c *LLMClient) processStream(resp *http.Response) (string, error) {
-	counter := 0
-	streamReader := bufio.NewReader(resp.Body)
-	totalData := ""
-	for {
-		line, err := streamReader.ReadString('\n')
-		if err != nil {
-			break
-		}
-		line = strings.TrimSpace(line)
-		if line == "data: [DONE]" {
-			break
-		}
-		if strings.HasPrefix(line, "data:") {
-			payload := strings.TrimPrefix(line, "data:")
-
-			var responseData ResponseData
-			err = json.Unmarshal([]byte(payload), &responseData)
-			if err != nil {
-				fmt.Println("Error parsing data:", err)
-				continue
-			}
-			if len(responseData.Choices) == 0 {
-				continue
-			}
-			content := responseData.Choices[0].Delta.Content
-			if counter < 2 && strings.Count(content, "\n") > 0 {
-				continue
-			}
-			totalData += content
-			c.StreamCallback(totalData, nil)
-			counter++
-		}
-	}
-	return totalData, nil
-}
-
-func (c *LLMClient) callStream(payload Payload) (Message, error) {
-	req, err := c.createRequest(payload)
-	if err != nil {
-		return Message{}, fmt.Errorf("failed to create the request: %w", err)
+		return "", fmt.Errorf("build request: %w", err)
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return Message{}, fmt.Errorf("failed to make the API request: %w", err)
+		return "", fmt.Errorf("failed to make the API request: %w", err)
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != 200 {
-		return Message{}, fmt.Errorf("API request failed: %s", resp.Status)
+		return "", fmt.Errorf("API request failed: %s", resp.Status)
 	}
-	content, err := c.processStream(resp)
-	return Message{Role: "assistant", Content: content}, err
+	content, err := c.adapter.ParseStream(resp, func(total string) error {
+		if c.StreamCallback != nil {
+			c.StreamCallback(total, nil)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	c.messages = append(c.messages, Message{Role: "assistant", Content: content})
+	return content, nil
 }
