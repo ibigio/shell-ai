@@ -3,6 +3,7 @@ preferences:
 
 models:
   - name: gpt-4.1
+    provider: openai
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
@@ -15,6 +16,7 @@ models:
         content: "```bash\necho \"hi\"\n```"
 
   - name: gpt-4.1-mini
+    provider: openai
     endpoint: https://api.openai.com/v1/chat/completions
     auth_env_var: OPENAI_API_KEY
     org_env_var: OPENAI_ORG_ID
