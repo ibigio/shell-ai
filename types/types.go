@@ -2,6 +2,7 @@ package types
 
 type ModelConfig struct {
 	ModelName string    `yaml:"name"`
+	Provider  string    `yaml:"provider,omitempty"`
 	Endpoint  string    `yaml:"endpoint"`
 	Auth      string    `yaml:"auth_env_var"`
 	OrgID     string    `yaml:"org_env_var,omitempty"`
